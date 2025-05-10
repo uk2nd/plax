@@ -1,67 +1,36 @@
-## サービス概要
-シームレスに（複数のツールを利用することなく）進捗報告および共有を実施できるサービス
-・マスタスケジュールやWBSの作成
-・マネージャーへの進捗報告やチーム内での進捗共有
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## このサービスへの思い・作りたい理由
-本業として、システム開発のプロジェクトマネジメントを実施しているが、以下のような不満がある。
-①以下のようにツールが分かれるのは面倒。
- ・マスタスケジュールはPowerPointで作成　⇔　WBSはExcelで作成
- ・マネージャー向けにはPowerPointで進捗報告　⇔　チーム内ではExcelやJiraで進捗管理
-②PowerPointでマスタスケジュールを作成すると、オブジェクトに文字が入りきらない。
-③ExcelでWBSを作成すると、各タスクの開始日と終了日を入力するのに時間がかかり、直感的に作業できない。
-④Jiraは直観的にスケジュールを作成できるが、スケジュール上でPowerPointのように吹き出しを挿入できないから、報告用として利用しにくい
+## Getting Started
 
-## ユーザー層について
-ExcelやPowerPointを多用し、プロジェクトマネジメントに取り組んでいる20-30代。
-20-30代という比較的若い層にした理由は以下。
-・40代以上は、新しいツールに抵抗を抱かれやすい傾向があるため　*仮説
-・若い層に気に入られた場合、数十年後も利用してもらえる可能性が高まるため
+First, run the development server:
 
-## サービスの利用イメージ
-以下のような体験を提供し、日々のプロジェクトマネジメント業務の中で感じるストレスを低減させたい。
-①以下が一つのツール上で完結する
- ・マスタスケジュールとWBSの作成
- ・進捗報告と進捗管理
-②オブジェクト内の文字が入りきらない場合、外上/外右/内左など表示位置を選択できる
-③横方向のドラッグでオブジェクトを自動作成し、期間の入力を不要にできる
-④スケジュール上に吹き出しを挿入できる
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## ユーザーの獲得について
-自分と同じくプロジェクトマネジメントに取り組む職場メンバ（同期や上司、お客さん）へ、地道に宣伝・営業する。
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## サービスの差別化ポイント・推しポイント
-プロジェクトマネジメントのツールは溢れかえっている。
-故に、普及しているものはどれも多機能で何でもできる。
-ただ、特定の業務に特化されていないために、どこか不便さを感じている人は多いと想像している。
-本サービスは、進捗報告と共有に特化し、不快感のないシームレスな業務体験を提供できる。
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 機能候補
-- MVPリリース時
- - ログイン
- - ログアウト
- - プロジェクトCRUD
- - スケジュールCRUD（1階層目）
-- 本リリース時
- - スケジュールCRUD（2階層目以降）
- - コメントCRUD
- - オブジェクトCRUD
- - メンション
- - 通知
- - ウォッチ
- - コメントの書式
- - ファイル保持
- - スケジュール画面の拡大・縮小
- - スケジュールとオブジェクトの書式
- - スケジュールのインポート
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## 機能の実装方針予定
-・実行環境：JavaScript系（Node.jsなど）
-・フレームワーク：Next.js
-・ライブラリ
-　　UI：Tailwind CSS・shadcn/ui
-　　描画：Konva.js
-・データベース：Supabase
-・インフラ：Vercel
-・開発環境：TypeScript, ESLint, Prettier, Jest
-・CI/CD：GitHub Actions（+ Vercel連携）
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
