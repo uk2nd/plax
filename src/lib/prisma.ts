@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@/generated/prisma'
 
 // グローバルスコープでPrismaインスタンスを保持できる場所を作る
 const globalForPrisma = globalThis as unknown as {
