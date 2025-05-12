@@ -6,6 +6,8 @@ import { signIn } from '@/auth';
 // 認証エラーを扱うための型（エラー判定に使用）
 import { AuthError } from 'next-auth';
 
+import { redirect } from 'next/navigation'
+
 // フォームから送信されたデータをもとにユーザーを認証するサーバーアクション
 export async function authenticate(
     prevState: string | undefined,  // 前回のエラーメッセージ（または状態）
@@ -13,10 +15,15 @@ export async function authenticate(
 ) {
     try {
         // 'credentials' プロバイダを使って認証を試みる（ログイン処理）
-        await signIn('credentials', formData);
-    }
+        await signIn('credentials', {
+            ...Object.fromEntries(formData),
+            redirect: false, // 自動リダイレクトを無効化
+        })
 
-    catch (error) {
+        // 認証成功後に手動でリダイレクト
+        redirect('/dashboard');
+
+    } catch (error) {
         // 認証エラーの場合の処理（AuthErrorのインスタンスか確認）
         if (error instanceof AuthError) {
             // エラーメッセージが 'CredentialsSignin'（＝認証失敗）の場合

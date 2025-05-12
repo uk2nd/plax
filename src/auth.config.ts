@@ -24,7 +24,7 @@ export const authConfig = {
                 if (isLoggedIn) return true;
 
                 // 未ログインならアクセス拒否（NextAuthがsignInページにリダイレクト）
-                return false;
+                return Response.redirect(new URL('/login', nextUrl));
             }
 
             // ログイン済みユーザーが login ページにアクセスした場合
