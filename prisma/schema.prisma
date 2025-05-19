@@ -14,6 +14,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  admin
+  editor
+  viewer
+}
+
 model User {
  id String @id @default(cuid())
  email String @unique
@@ -21,4 +27,27 @@ model User {
  name String
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
+
+ userProjects  UserProject[]
+}
+
+model Project {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  userProjects  UserProject[]
+}
+
+model UserProject {
+  userId        String
+  projectId     String
+  role          UserRole       // 追加されたロール列挙型
+  assignedAt    DateTime       @default(now())
+
+  user          User           @relation(fields: [userId], references: [id])
+  project       Project        @relation(fields: [projectId], references: [id])
+
+  @@id([userId, projectId]) // 複合主キーで重複を防止
 }
