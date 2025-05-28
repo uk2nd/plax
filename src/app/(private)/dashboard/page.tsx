@@ -1,7 +1,7 @@
 export default async function DashboardPage() {
   return (
     <div>
-      dashboard
+      プロジェクトを選択してください
     </div>
   )
 }

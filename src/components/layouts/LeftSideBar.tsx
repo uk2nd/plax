@@ -1,5 +1,3 @@
-"use client"
-
 import {
   Sidebar,
   SidebarContent,
@@ -17,24 +15,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import CreateProject from "@/components/project/CreateProject"
+import ProjectList from "@/components/project/ProjectList"
+import { fetchProjectList } from "@/lib/actions/fetchProjectList"
 
-// Menu items.
-const items = [
-  {
-    title: "プロジェクトA",
-    url: "#",
-  },
-  {
-    title: "プロジェクトB",
-    url: "#",
-  },
-  {
-    title: "+ プロジェクトを作成",
-    url: "#",
-  },
-]
+export default async function LeftSideBar() {
+  const projects = await fetchProjectList()
 
-export default function LeftSideBar() {
   return (
     <Sidebar side="left" className="bg-black text-white">
       <SidebarContent className="bg-black text-white">
@@ -50,15 +37,12 @@ export default function LeftSideBar() {
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    {items.map((item) => (
-                      <SidebarMenuSub key={item.title}>
+                      <SidebarMenuSub>
                           <SidebarMenuSubItem>
-                            <a href={item.url}  className="text-white hover:underline">
-                              <span>{item.title}</span>
-                            </a>
+                            <ProjectList projects={projects} />
+                            <CreateProject />
                           </SidebarMenuSubItem>
                       </SidebarMenuSub>
-                    ))}
                   </CollapsibleContent>
                 </SidebarMenuItem>
               </Collapsible>
