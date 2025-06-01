@@ -1,24 +1,26 @@
 "use client"
 
 import Link from "next/link"
+import { ProjectProps } from "@/types/project"
+import ProjectMenu from "@/components/project/ProjectMenu"
 
-type Project = {
-  id: string
-  name: string
-}
-
-export default function ProjectList({ projects }: { projects: Project[] }) {
+export default function ProjectList({ projects }: { projects: ProjectProps[] }) {
   return (
-    <>
+    <div className="space-y-1">
       {projects.map((project) => (
-        <Link
+        <div
           key={project.id}
-          href={`/dashboard/project/${project.id}`}
-          className="block px-2 py-1 hover:underline text-white"
+          className="flex items-center justify-between px-2 py-1 text-white hover:bg-gray-800 rounded-md"
         >
-          {project.name}
-        </Link>
+          <Link
+            href={`/dashboard/project/${project.id}`}
+            className="hover:underline"
+          >
+            {project.name}
+          </Link>
+          <ProjectMenu projectId={project.id} />
+        </div>
       ))}
-    </>
+    </div>
   )
 }

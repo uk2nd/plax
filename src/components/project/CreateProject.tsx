@@ -1,7 +1,7 @@
 "use client"
 
 import { createProject } from "@/lib/actions/createProject"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRef } from "react"
@@ -18,7 +18,8 @@ export default function CreateProject() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>プロジェクトを作成</DialogTitle>
+          <DialogTitle>プロジェクトの作成</DialogTitle>
+          <DialogDescription>作成するプロジェクトの名称を入力してください。</DialogDescription>
         </DialogHeader>
         <form
           ref={ref}
@@ -28,7 +29,7 @@ export default function CreateProject() {
           }}
           className="space-y-4"
         >
-          <Input name="name" placeholder="プロジェクト名を入力" required />
+          <Input name="name" placeholder="プロジェクトの名称を入力" required />
           <Button type="submit">作成</Button>
         </form>
       </DialogContent>
