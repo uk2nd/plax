@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/collapsible"
 import CreateProject from "@/components/project/CreateProject"
 import ProjectList from "@/components/project/ProjectList"
-import { fetchProjectList } from "@/lib/actions/fetchProjectList"
+import { fetchProjectList } from "@/lib/actions/project/fetchProjectList"
 
 export default async function LeftSideBar() {
   const projects = await fetchProjectList()

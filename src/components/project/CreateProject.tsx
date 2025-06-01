@@ -1,6 +1,6 @@
 "use client"
 
-import { createProject } from "@/lib/actions/createProject"
+import { createProject } from "@/lib/actions/project/createProject"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

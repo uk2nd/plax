@@ -1,12 +1,12 @@
 import { auth } from "@/auth"
-import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 
 export async function fetchProjectList() {
   const session = await auth()
   const email = session?.user?.email
   if (!email) return []
 
-  const user = await db.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { email },
     include: {
       userProjects: {

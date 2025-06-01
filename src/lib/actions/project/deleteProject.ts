@@ -1,9 +1,9 @@
 'use server'
 
-import { db } from "@/lib/db"
+import { prisma } from "@/lib/prisma"
 
 export async function deleteProject(projectId: string) {
-  await db.project.delete({
+  await prisma.project.delete({
     where: { id: projectId },
   })
 }

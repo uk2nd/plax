@@ -1,7 +1,7 @@
 "use server" // Server Action として動作することを明示（Next.js の機能）
 
 import { auth } from "@/auth" // 認証セッション情報を取得するための関数
-import { db } from "@/lib/db" // Prisma Client をインポート
+import { prisma } from "@/lib/prisma" // Prisma Client をインポート
 import { revalidatePath } from "next/cache" // キャッシュされたページを再検証するための関数
 import { UserRole } from "@prisma/client" // enum型（admin, editor, viewer）をインポート
 
@@ -19,7 +19,7 @@ export async function createProject(formData: FormData) {
   }
 
   // メールアドレスをもとにDBからユーザー情報を取得
-  const user = await db.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { email: session.user.email },
   })
 
@@ -27,7 +27,7 @@ export async function createProject(formData: FormData) {
   if (!user) throw new Error("ユーザーが存在しません")
 
   // プロジェクトを作成し、同時に UserProject テーブルに関連レコードを追加
-  const project = await db.project.create({
+  const project = await prisma.project.create({
     data: {
       name,
       userProjects: {
