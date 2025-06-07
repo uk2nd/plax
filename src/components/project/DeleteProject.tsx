@@ -10,8 +10,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { deleteProject } from "@/lib/actions/project/deleteProject"
 import { ProjectDeleteProps } from "@/types/project"
+import { useRouter } from 'next/navigation'
 
 export default function DeleteProject({ open, onOpenChange, projectId }: ProjectDeleteProps) {
+  const router = useRouter()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -21,16 +24,11 @@ export default function DeleteProject({ open, onOpenChange, projectId }: Project
         </DialogHeader>
         <div className="flex justify-end space-x-2">
           <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            キャンセル
-          </Button>
-          <Button
             variant="destructive"
             onClick={async () => {
               await deleteProject(projectId)
               onOpenChange(false)
+              router.refresh()
             }}
           >
             削除

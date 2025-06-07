@@ -27,7 +27,7 @@ export default function CreateProject() {
             await createProject(formData)
             ref.current?.reset()
           }}
-          className="space-y-4"
+          className="flex justify-end space-x-2"
         >
           <Input name="name" placeholder="プロジェクトの名称を入力" required />
           <Button type="submit">作成</Button>
