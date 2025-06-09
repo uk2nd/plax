@@ -12,7 +12,11 @@ import { deleteProject } from "@/lib/actions/project/deleteProject"
 import { ProjectDeleteProps } from "@/types/project"
 import { useRouter } from 'next/navigation'
 
-export default function DeleteProject({ open, onOpenChange, projectId }: ProjectDeleteProps) {
+export default function DeleteProject({
+  open,
+  onOpenChange,
+  projectId
+}: ProjectDeleteProps) {
   const router = useRouter()
 
   return (

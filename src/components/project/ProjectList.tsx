@@ -18,7 +18,7 @@ export default function ProjectList({ projects }: { projects: ProjectProps[] }) 
           >
             {project.name}
           </Link>
-          <ProjectMenu projectId={project.id} />
+          <ProjectMenu projectId={project.id} projectName={project.name} />
         </div>
       ))}
     </div>

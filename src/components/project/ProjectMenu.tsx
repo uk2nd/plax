@@ -8,9 +8,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useState } from "react"
+import { ProjectMenuProps } from "@/types/project"
+import EditProject from "@/components/project/EditProject"
 import DeleteProject from "@/components/project/DeleteProject"
 
-export default function ProjectMenu({ projectId }: { projectId: string }) {
+export default function ProjectMenu({
+  projectId,
+  projectName
+}: ProjectMenuProps ) {
+  const [editOpen, setEditOpen] = useState(false)
   const [open, setOpen] = useState(false)
 
   return (
@@ -20,7 +26,10 @@ export default function ProjectMenu({ projectId }: { projectId: string }) {
           <MoreHorizontal className="w-4 h-4" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => {
+              setTimeout(() => setEditOpen(true), 0)
+            }}>
             編集
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -32,6 +41,12 @@ export default function ProjectMenu({ projectId }: { projectId: string }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <EditProject
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        projectId={projectId}
+        currentName={projectName}
+      />
       <DeleteProject
         open={open}
         onOpenChange={setOpen}
