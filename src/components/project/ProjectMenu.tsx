@@ -16,8 +16,8 @@ export default function ProjectMenu({
   projectId,
   projectName
 }: ProjectMenuProps ) {
-  const [editOpen, setEditOpen] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [editProjectOpen, setEditProjectOpen] = useState(false)
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false)
 
   return (
     <>
@@ -28,13 +28,13 @@ export default function ProjectMenu({
         <DropdownMenuContent align="end">
           <DropdownMenuItem
             onSelect={() => {
-              setTimeout(() => setEditOpen(true), 0)
+              setTimeout(() => setEditProjectOpen(true), 0)
             }}>
             編集
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
-              setTimeout(() => setOpen(true), 0)
+              setTimeout(() => setDeleteProjectOpen(true), 0)
             }}
           >
             削除
@@ -42,14 +42,14 @@ export default function ProjectMenu({
         </DropdownMenuContent>
       </DropdownMenu>
       <EditProject
-        open={editOpen}
-        onOpenChange={setEditOpen}
+        open={editProjectOpen}
+        onOpenChange={setEditProjectOpen}
         projectId={projectId}
         currentName={projectName}
       />
       <DeleteProject
-        open={open}
-        onOpenChange={setOpen}
+        open={deleteProjectOpen}
+        onOpenChange={setDeleteProjectOpen}
         projectId={projectId}
       />
     </>
