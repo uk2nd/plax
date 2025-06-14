@@ -4,13 +4,14 @@ import { createProject } from "@/lib/actions/project/createProject"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 export default function CreateProject() {
+  const [createProjectOpen, setCreateProjectOpen] = useState(false)
   const ref = useRef<HTMLFormElement>(null)
 
   return (
-    <Dialog>
+    <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" className="w-full justify-start text-white hover:bg-gray-800">
           + プロジェクトを作成
@@ -26,6 +27,7 @@ export default function CreateProject() {
           action={async (formData) => {
             await createProject(formData)
             ref.current?.reset()
+            setCreateProjectOpen(false)
           }}
           className="flex justify-end space-x-2"
         >
