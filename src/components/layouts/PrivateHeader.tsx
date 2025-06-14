@@ -20,7 +20,7 @@ export default async function PrivateHeader() {
                     <NavigationMenuItem>
                             <NavigationMenuLink asChild>
                                 <Link href="/dashboard" className="font-bold text-xl">
-                                    管理ページ
+                                    Plax
                                 </Link>
                             </NavigationMenuLink>
                     </NavigationMenuItem>
