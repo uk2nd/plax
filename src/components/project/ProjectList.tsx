@@ -13,7 +13,7 @@ export default function ProjectList({ projects }: { projects: ProjectProps[] }) 
           className="flex items-center justify-between px-2 py-1 text-white hover:bg-gray-800 rounded-md"
         >
           <Link
-            href={`/dashboard/project/${project.id}`}
+            href={`/dashboard/${project.id}/schedule`}
             className="hover:underline"
           >
             {project.name}
