@@ -22,7 +22,6 @@ export async function fetchScheduleData(projectId: string): Promise<ScheduleProp
   });
 
   return {
-    project,
     phases,
     tasks,
   };

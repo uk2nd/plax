@@ -1,7 +1,6 @@
 import { Project, Phase, Task } from "@prisma/client";
 
 export type ScheduleProps = {
-  project: Project;
   phases: Phase[];
   tasks: Task[];
 };

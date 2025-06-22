@@ -8,19 +8,15 @@ type Props = {
 };
 
 export default async function SchedulePage( { params }: Props ) {
-  const { projectId } = await params;
+  const { projectId } = params;
 
   try {
     const data = await fetchScheduleData(projectId);
 
     return (
-      <div className="h-full w-full flex">
+      <div className="w-[90vw] h-[90vh] flex">
         <PhaseList phases={data.phases} />
-        <TimelineCanvas
-          project={data.project}
-          phases={data.phases}
-          tasks={data.tasks}
-        />
+        <TimelineCanvas phases={data.phases} tasks={data.tasks} />
       </div>
     );
   } catch (error) {
