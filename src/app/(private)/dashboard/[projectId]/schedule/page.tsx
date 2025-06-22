@@ -15,7 +15,7 @@ export default async function SchedulePage( { params }: Props ) {
 
     return (
       <div className="w-[90vw] h-[90vh] flex">
-        <PhaseList phases={data.phases} />
+        <PhaseList phases={data.phases} projectId={projectId} />
         <TimelineCanvas phases={data.phases} tasks={data.tasks} />
       </div>
     );
