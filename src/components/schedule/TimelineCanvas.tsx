@@ -120,6 +120,43 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
           <Line points={[0, 15, canvasWidth, MONTH_LINE_Y]} stroke="gray" strokeWidth={1} />
           <Line points={[0, 30, canvasWidth, DAY_LINE_Y]} stroke="gray" strokeWidth={1} />
 
+          {/* ✅ 各日付を区切る縦線 */}
+          {visibleDays.map(({ x }, index) => (
+            <Line
+              key={`vline-${index}`}
+              points={[x, DATE_HEIGHT, x, canvasHeight]}
+              stroke="#e0e0e0"
+              strokeWidth={1}
+              dash={[2, 2]}
+            />
+          ))}
+
+          {/* ✅ 各フェーズを区切る横線 */}
+          {phases.map((_, index) => {
+            const y = DATE_HEIGHT + index * PHASE_TASK_HEIGHT;
+            return (
+              <Line
+                key={`hline-${index}`}
+                points={[0, y, canvasWidth, y]}
+                stroke="#d0d0d0"
+                strokeWidth={1}
+              />
+            );
+          })}
+
+          {/* ✅ 最後のフェーズの下部にも横線を追加 */}
+          <Line
+            key="hline-last"
+            points={[
+              0,
+              DATE_HEIGHT + phases.length * PHASE_TASK_HEIGHT,
+              canvasWidth,
+              DATE_HEIGHT + phases.length * PHASE_TASK_HEIGHT,
+            ]}
+            stroke="#d0d0d0"
+            strokeWidth={1}
+          />
+
           {/* 月のラベル（例：2025/4）を表示 */}
           {visibleMonths.map(({ year, month, x }) => (
             <Text
