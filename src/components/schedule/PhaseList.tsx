@@ -4,6 +4,7 @@ import { PHASE_TASK_HEIGHT, DATE_HEIGHT, PHASE_WIDTH } from "@/constants/schedul
 import { Phase } from "@prisma/client"
 import PhaseMenu from "@/components/phase/PhaseMenu"
 import CreatePhase from "@/components/phase/CreatePhase"
+import CreateTask from "@/components/task/CreateTask"
 
 type PhaseListProps = {
   phases: Phase[];
@@ -38,7 +39,10 @@ export function PhaseList({ phases, projectId }: PhaseListProps) {
             style={{ height: PHASE_TASK_HEIGHT }}
           >
             <span className="truncate">{phase.name}</span>
-            <PhaseMenu phaseId={phase.id} phaseName={phase.name} />
+            <div className="flex space-x-2">
+              <PhaseMenu phaseId={phase.id} phaseName={phase.name} />
+              <CreateTask phaseId={phase.id} projectId={projectId} />
+            </div>
           </div>
         ))
       )}

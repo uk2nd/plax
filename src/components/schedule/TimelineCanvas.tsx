@@ -1,50 +1,51 @@
 "use client";
 
 import { useRef, useEffect, useState, useMemo } from "react";
-import { Stage, Layer, Line, Text } from "react-konva";
+import { Stage, Layer, Line, Text, Rect } from "react-konva";
 import { ScheduleProps, MonthLabel, DayLabel } from "@/types/schedule";
-import { PHASE_TASK_HEIGHT, DATE_HEIGHT, DAY_WIDTH, MONTH_LINE_Y, DAY_LINE_Y } from "@/constants/scheduleLayout"
+import {
+  PHASE_TASK_HEIGHT,
+  DATE_HEIGHT,
+  DAY_WIDTH,
+  MONTH_LINE_Y,
+  DAY_LINE_Y,
+} from "@/constants/scheduleLayout";
+import { Fragment } from "react";
+import EditTask from "@/components/task/EditTask";
+import { Task } from "@prisma/client";
 
 export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
   const startYear = 2025;
-  const [totalYears, setTotalYears] = useState(2); // 初期表示する年数
-  const canvasHeight = phases.length * PHASE_TASK_HEIGHT + DATE_HEIGHT;; // タスク数に応じて変更
+  const [totalYears, setTotalYears] = useState(2);
+  const canvasHeight = phases.length * PHASE_TASK_HEIGHT + DATE_HEIGHT;
 
-  const containerRef = useRef<HTMLDivElement>(null); // スクロール可能なDIVの参照
-  const [scrollLeft, setScrollLeft] = useState(0); // 現在のスクロール位置（左方向）
-  const [viewportWidth, setViewportWidth] = useState(1000); // 表示領域の幅（初期は仮）
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(1000);
 
-  // ✅ ウィンドウサイズが変更された時に表示領域の幅を更新
   useEffect(() => {
     const updateWidth = () => {
-      setViewportWidth(window.innerWidth * 0.9); // ウィンドウ幅の90%を使用
+      setViewportWidth(window.innerWidth * 0.9);
     };
-
-    updateWidth(); // 初期値を設定
-
-    window.addEventListener("resize", updateWidth); // リサイズ時に更新
-    return () => window.removeEventListener("resize", updateWidth); // クリーンアップ
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
   }, []);
 
-  // ✅ スクロールイベントに応じて状態を更新（パフォーマンスを考慮してrequestAnimationFrameを使用）
   useEffect(() => {
-    let ticking = false; // イベント連打による負荷を防ぐフラグ
-
+    let ticking = false;
     const handleScroll = () => {
       const container = containerRef.current;
       if (!container) return;
 
       if (!ticking) {
-        // ブラウザの次の描画タイミングで実行
         window.requestAnimationFrame(() => {
           const { scrollLeft, scrollWidth, clientWidth } = container;
-          setScrollLeft(scrollLeft); // 現在のスクロール位置を保存
-
-          const nearEnd = scrollLeft + clientWidth >= scrollWidth - 30; // 右端近くまでスクロールしたか
+          setScrollLeft(scrollLeft);
+          const nearEnd = scrollLeft + clientWidth >= scrollWidth - 30;
           if (nearEnd) {
-            setTotalYears((prev) => prev + 1); // 年数を1年分追加（無限スクロール）
+            setTotalYears((prev) => prev + 1);
           }
-
           ticking = false;
         });
         ticking = true;
@@ -52,34 +53,39 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
     };
 
     const container = containerRef.current;
-    container?.addEventListener("scroll", handleScroll); // スクロール監視
-    return () => container?.removeEventListener("scroll", handleScroll); // クリーンアップ
+    container?.addEventListener("scroll", handleScroll);
+    return () => container?.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 閏年の判定関数
   const isLeapYear = (year: number) =>
     (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
-  // 各月の日数を返す関数（閏年対応）
   const getMonthDays = (year: number): number[] => [
-    31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+    31,
+    isLeapYear(year) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
   ];
 
-  // ✅ 月・日ラベルおよびキャンバスの総幅を計算（必要なときのみ再計算）
   const { monthLabels, dayLabels, canvasWidth } = useMemo(() => {
-    const monthLabels: MonthLabel[] = []; // 月ラベル（1月〜12月）
-    const dayLabels: DayLabel[] = []; // 日ラベル（1日〜31日）
-    let currentX = 0; // ラベルの描画位置（横方向）
+    const monthLabels: MonthLabel[] = [];
+    const dayLabels: DayLabel[] = [];
+    let currentX = 0;
 
     for (let y = 0; y < totalYears; y++) {
       const year = startYear + y;
-      const months = getMonthDays(year); // 月ごとの日数
+      const months = getMonthDays(year);
 
       months.forEach((days, m) => {
-        // 月ラベルを追加
         monthLabels.push({ year, month: m + 1, x: currentX });
-
-        // 日ラベルを追加
         for (let d = 1; d <= days; d++) {
           dayLabels.push({
             year,
@@ -88,8 +94,6 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
             x: currentX + (d - 1) * DAY_WIDTH,
           });
         }
-
-        // 次の月のX座標を更新
         currentX += days * DAY_WIDTH;
       });
     }
@@ -97,30 +101,28 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
     return { monthLabels, dayLabels, canvasWidth: currentX };
   }, [totalYears]);
 
-  // 現在のスクロール位置に基づいて、表示すべき領域の開始と終了位置を計算
   const visibleStart = scrollLeft;
   const visibleEnd = scrollLeft + viewportWidth;
 
-  // ✅ 表示領域に入っている月のみをフィルタリング（描画コストを削減）
   const visibleMonths = monthLabels.filter(
     ({ x }) => x < visibleEnd && x + 30 * DAY_WIDTH > visibleStart
   );
 
-  // ✅ 表示領域に入っている日だけを表示（不要な描画を回避）
   const visibleDays = dayLabels.filter(
     ({ x }) => x < visibleEnd && x + DAY_WIDTH > visibleStart
   );
 
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
   return (
     <div ref={containerRef} className="flex-1 overflow-scroll">
-      {/* Konvaのキャンバス要素（Stage） */}
       <Stage width={canvasWidth} height={canvasHeight}>
         <Layer>
-          {/* 月ラベルと日ラベルの下線 */}
+          {/* グリッド線 */}
           <Line points={[0, 15, canvasWidth, MONTH_LINE_Y]} stroke="gray" strokeWidth={1} />
           <Line points={[0, 30, canvasWidth, DAY_LINE_Y]} stroke="gray" strokeWidth={1} />
 
-          {/* ✅ 各日付を区切る縦線 */}
           {visibleDays.map(({ x }, index) => (
             <Line
               key={`vline-${index}`}
@@ -131,7 +133,6 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
             />
           ))}
 
-          {/* ✅ 各フェーズを区切る横線 */}
           {phases.map((_, index) => {
             const y = DATE_HEIGHT + index * PHASE_TASK_HEIGHT;
             return (
@@ -144,7 +145,6 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
             );
           })}
 
-          {/* ✅ 最後のフェーズの下部にも横線を追加 */}
           <Line
             key="hline-last"
             points={[
@@ -157,31 +157,106 @@ export function TimelineCanvas({ phases, tasks }: ScheduleProps) {
             strokeWidth={1}
           />
 
-          {/* 月のラベル（例：2025/4）を表示 */}
+          {/* 月・日付ラベル */}
           {visibleMonths.map(({ year, month, x }) => (
             <Text
               key={`month-${year}-${month}`}
               text={`${year}/${month}`}
               x={x + 4}
-              y={MONTH_LINE_Y +2}
+              y={MONTH_LINE_Y + 2}
               fontSize={12}
               fill="black"
             />
           ))}
 
-          {/* 日付のラベル（例：15）を表示 */}
-          {visibleDays.map(({ year, month, day, x }) => (
+          {visibleDays.map(({ day, x, year, month }) => (
             <Text
               key={`day-${year}-${month}-${day}`}
               text={`${day}`}
               x={x + 2}
-              y={DAY_LINE_Y +2}
+              y={DAY_LINE_Y + 2}
               fontSize={10}
               fill="black"
             />
           ))}
+
+          {/* タスクの描画 */}
+          {tasks.map((task) => {
+            const phaseIndex = phases.findIndex((p) => p.id === task.phaseId);
+            if (phaseIndex === -1) return null;
+
+            const start = new Date(task.startDate);
+            const end = new Date(task.endDate);
+
+            const startLabel = dayLabels.find(
+              (d) =>
+                d.year === start.getFullYear() &&
+                d.month === start.getMonth() + 1 &&
+                d.day === start.getDate()
+            );
+            const endLabel = dayLabels.find(
+              (d) =>
+                d.year === end.getFullYear() &&
+                d.month === end.getMonth() + 1 &&
+                d.day === end.getDate()
+            );
+
+            if (!startLabel || !endLabel) return null;
+
+            const startX = startLabel.x;
+            const endX = endLabel.x + DAY_WIDTH;
+
+            if (startX > visibleEnd || endX < visibleStart) return null;
+
+            const y = DATE_HEIGHT + phaseIndex * PHASE_TASK_HEIGHT + 5;
+
+            return (
+              <Fragment key={task.id}>
+                <Rect
+                  x={startX}
+                  y={y}
+                  width={Math.max(endX - startX, DAY_WIDTH)}
+                  height={PHASE_TASK_HEIGHT - 10}
+                  fill="#60a5fa"
+                  cornerRadius={4}
+                  shadowBlur={2}
+                  onClick={() => {
+                    setSelectedTask(task);
+                    setEditDialogOpen(true);
+                  }}
+                  onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = "pointer";
+                  }}
+                  onMouseLeave={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = "default";
+                  }}
+                />
+                <Text
+                  text={task.name}
+                  x={startX + 4}
+                  y={y + 6}
+                  fontSize={12}
+                  fill="white"
+                  wrap="none"
+                />
+              </Fragment>
+            );
+          })}
         </Layer>
       </Stage>
+      {selectedTask && (
+        <EditTask
+          task={selectedTask}
+          projectId={phases[0]?.projectId ?? ""}
+          open={editDialogOpen}
+          onOpenChange={(v) => {
+            setEditDialogOpen(v);
+            if (!v) setSelectedTask(null); // 閉じたときに状態リセット
+          }}
+        />
+      )}
     </div>
   );
 }
