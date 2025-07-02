@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { editTask } from "@/lib/actions/task/editTask";
 import { Task } from "@prisma/client";
 import { Pencil } from "lucide-react";
+import { deleteTask } from "@/lib/actions/task/deleteTask";
 
 type Props = {
   task: Task;
@@ -77,7 +78,19 @@ export default function EditTask({ task, projectId, open: controlledOpen, onOpen
           <Input name="name" defaultValue={task.name} placeholder="タスク名" required maxLength={30} />
           <Input name="startDate" type="date" defaultValue={task.startDate.toISOString().split("T")[0]} required />
           <Input name="endDate" type="date" defaultValue={task.endDate.toISOString().split("T")[0]} required />
-          <div className="flex justify-end">
+          <div className="flex justify-between mt-2">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={async () => {
+                const confirmed = window.confirm("このタスクを削除してもよろしいですか？");
+                if (!confirmed) return;
+                await deleteTask(task.id, projectId);
+                setActualOpen(false);
+              }}
+            >
+              削除
+            </Button>
             <Button type="submit">保存</Button>
           </div>
         </form>
