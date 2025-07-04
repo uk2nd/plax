@@ -22,8 +22,8 @@ export default function ProjectMenu({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger className="focus:outline-none">
-          <MoreHorizontal className="w-4 h-4" />
+        <DropdownMenuTrigger className="focus:outline-none"  aria-label={`プロジェクト操作メニュー: ${projectName}`}>
+          <MoreHorizontal className="w-4 h-4 cursor-pointer" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem

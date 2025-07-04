@@ -1,18 +1,18 @@
 "use client"
 
-import { createProject } from "@/lib/actions/project/createProject"
+import { useRef, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useRef, useState } from "react"
+import { createPhase } from "@/lib/actions/phase/createPhase"
 import { Plus } from "lucide-react"
 
-export default function CreateProject() {
-  const [createProjectOpen, setCreateProjectOpen] = useState(false)
+export default function CreatePhase({ projectId }: { projectId: string }) {
+  const [open, setOpen] = useState(false)
   const ref = useRef<HTMLFormElement>(null)
 
   return (
-    <Dialog open={createProjectOpen} onOpenChange={setCreateProjectOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button type="button" variant="ghost" className="cursor-pointer">
           <Plus className="w-4 h-4 mr-1" />
@@ -20,19 +20,19 @@ export default function CreateProject() {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>プロジェクトの作成</DialogTitle>
-          <DialogDescription>作成するプロジェクトの名称を入力してください。</DialogDescription>
+          <DialogTitle>フェーズの作成</DialogTitle>
+          <DialogDescription>新しいフェーズ名を入力してください。</DialogDescription>
         </DialogHeader>
         <form
           ref={ref}
           action={async (formData) => {
-            await createProject(formData)
+            await createPhase(formData, projectId)
             ref.current?.reset()
-            setCreateProjectOpen(false)
+            setOpen(false)
           }}
           className="flex justify-end space-x-2"
         >
-          <Input name="name" placeholder="プロジェクトの名称を入力" required />
+          <Input name="name" placeholder="フェーズ名" required />
           <Button type="submit">作成</Button>
         </form>
       </DialogContent>

@@ -31,16 +31,18 @@ export default async function LeftSideBar() {
             <SidebarMenu>
               <Collapsible defaultOpen className="group/collapsible">
                 <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="text-white hover:bg-gray-800">
-                      プロジェクト
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
+                  <div className="flex">
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="text-white cursor-pointer">
+                        プロジェクト
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CreateProject />
+                  </div>
                   <CollapsibleContent>
                       <SidebarMenuSub>
                           <SidebarMenuSubItem>
                             <ProjectList projects={projects} />
-                            <CreateProject />
                           </SidebarMenuSubItem>
                       </SidebarMenuSub>
                   </CollapsibleContent>
