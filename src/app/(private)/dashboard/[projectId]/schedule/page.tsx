@@ -4,11 +4,11 @@ import { PhaseList } from "@/components/schedule/PhaseList";
 import { notFound } from "next/navigation";
 
 type Props = {
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
 };
 
-export default async function SchedulePage( { params }: Props ) {
-  const { projectId } = params;
+export default async function SchedulePage({ params }: Props) {
+  const { projectId } = await params;
 
   try {
     const data = await fetchScheduleData(projectId);
@@ -21,6 +21,6 @@ export default async function SchedulePage( { params }: Props ) {
     );
   } catch (error) {
     console.error("Failed to load schedule data:", error);
-    return notFound(); // 404ページへ
+    return notFound();
   }
 }
