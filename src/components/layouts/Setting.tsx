@@ -7,6 +7,7 @@ import {
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { Session } from "next-auth" // Session 型をインポート
+import { MoreHorizontal } from "lucide-react"
 
 export default function Setting({session}: {session: Session}) {
     const handleLogout = async () => {
@@ -18,7 +19,7 @@ export default function Setting({session}: {session: Session}) {
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="font-medium">
-                {session.user?.name}
+                <MoreHorizontal className="w-4 h-4 cursor-pointer" />
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
