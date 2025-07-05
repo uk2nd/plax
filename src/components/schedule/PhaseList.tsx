@@ -19,10 +19,10 @@ export function PhaseList({ phases, projectId }: PhaseListProps) {
     >
       {/* ヘッダー */}
       <div
-        className="flex items-center justify-between px-2 border-b border-gray-300 text-sm font-semibold bg-white sticky top-0 z-10"
+        className="flex items-center justify-between px-2 border-b border-gray-300 text-sm font-semibold bg-white sticky top-0"
         style={{ height: DATE_HEIGHT }}
       >
-        <span>フェーズ</span>
+        <span className="text-lg font-semibold text-slate-800 tracking-wide">フェーズ</span>
         <CreatePhase projectId={projectId} />
       </div>
 
