@@ -18,8 +18,8 @@ export default function Setting({session}: {session: Session}) {
     return (
     <DropdownMenu>
         <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="font-medium">
-                <MoreHorizontal className="w-4 h-4 cursor-pointer" />
+            <Button variant="ghost" className="font-medium cursor-pointer">
+                <MoreHorizontal className="w-4 h-4" />
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
