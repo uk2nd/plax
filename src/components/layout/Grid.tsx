@@ -1,9 +1,28 @@
+"use client";
+
+import { useGrid } from "@/src/contexts/GridContext";
+
 export const Grid = () => {
+  const { isGridVisible, toggle } = useGrid();
+
+  if (!isGridVisible) {
+    return (
+      <div className="w-8 border-r border-gray-200 flex flex-col h-full bg-white">
+        <div className="flex justify-center p-2">
+          <button onClick={toggle} className="text-gray-600 hover:text-gray-800 p-1">
+            ＞
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 min-w-[400px] border-r border-gray-200 flex flex-col h-full bg-white">
-      {/* ヘッダー部分 */}
-      <div className="h-10 border-b border-gray-200 flex items-center px-4 bg-white">
-        <span className="text-sm font-semibold text-gray-600">入力グリッド</span>
+      <div className="flex justify-end p-2">
+        <button onClick={toggle} className="text-gray-600 hover:text-gray-800">
+          ＜
+        </button>
       </div>
 
       {/* グリッド本体（スクロール可能エリア） */}
