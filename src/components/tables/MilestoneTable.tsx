@@ -7,6 +7,9 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import { formatDateInput } from "@/src/utils/dateFormat";
+import { useTableKeyboardNavigation } from "@/src/hooks/useTableKeyboardNavigation";
+import { TABLE_INPUT_CLASSES } from "@/src/constants/tableStyles";
 
 type Milestone = {
   name: string;
@@ -22,6 +25,7 @@ const initialData: Milestone[] = [createEmptyRow()];
 
 export const MilestoneTable = () => {
   const [data, setData] = useState<Milestone[]>(initialData);
+  const { handleSimpleGridKeyDown } = useTableKeyboardNavigation();
 
   const updateData = (rowIndex: number, columnId: string, value: string) => {
     setData((old) => {
@@ -51,56 +55,6 @@ export const MilestoneTable = () => {
     });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
-    const input = e.currentTarget;
-    const totalCols = 2; // name, date
-    let nextRow = rowIndex;
-    let nextCol = colIndex;
-
-    switch (e.key) {
-      case "ArrowRight":
-        // カーソルが文字列の末尾にいる場合のみセル移動
-        if (input.selectionStart === input.value.length && nextCol < totalCols - 1) {
-          nextCol++;
-          e.preventDefault();
-        } else {
-          return; // デフォルトのカーソル移動を許可
-        }
-        break;
-      case "ArrowLeft":
-        // カーソルが文字列の先頭にいる場合のみセル移動
-        if (input.selectionStart === 0 && nextCol > 0) {
-          nextCol--;
-          e.preventDefault();
-        } else {
-          return; // デフォルトのカーソル移動を許可
-        }
-        break;
-      case "ArrowDown":
-        nextRow++;
-        e.preventDefault();
-        break;
-      case "ArrowUp":
-        if (nextRow > 0) {
-          nextRow--;
-          e.preventDefault();
-        }
-        break;
-      default:
-        return;
-    }
-
-    // 次のセルを探してフォーカス
-    const nextInput = document.querySelector(
-      `input[data-row="${nextRow}"][data-col="${nextCol}"]`
-    ) as HTMLInputElement;
-    
-    if (nextInput) {
-      nextInput.focus();
-      nextInput.select();
-    }
-  };
-
   const columnHelper = createColumnHelper<Milestone>();
 
   const columns = useMemo(
@@ -114,10 +68,10 @@ export const MilestoneTable = () => {
             onChange={(e) =>
               updateData(info.row.index, info.column.id, e.target.value)
             }
-            onKeyDown={(e) => handleKeyDown(e, info.row.index, 0)}
+            onKeyDown={(e) => handleSimpleGridKeyDown(e, info.row.index, 0, 2)}
             data-row={info.row.index}
             data-col={0}
-            className="w-full border-none outline-none bg-transparent px-0 focus:ring-0"
+            className={TABLE_INPUT_CLASSES}
           />
         ),
       }),
@@ -130,10 +84,16 @@ export const MilestoneTable = () => {
             onChange={(e) =>
               updateData(info.row.index, info.column.id, e.target.value)
             }
-            onKeyDown={(e) => handleKeyDown(e, info.row.index, 1)}
+            onBlur={(e) => {
+              const formatted = formatDateInput(e.target.value);
+              if (formatted !== e.target.value) {
+                updateData(info.row.index, info.column.id, formatted);
+              }
+            }}
+            onKeyDown={(e) => handleSimpleGridKeyDown(e, info.row.index, 1, 2)}
             data-row={info.row.index}
             data-col={1}
-            className="w-full border-none outline-none bg-transparent px-0 focus:ring-0"
+            className={TABLE_INPUT_CLASSES}
           />
         ),
       }),

@@ -2,7 +2,7 @@
 
 import { useGridStore } from "@/src/stores/gridStore";
 import { MilestoneTable } from "@/src/components/tables/MilestoneTable";
-import { ProjectLanesTable } from "@/src/components/tables/ProjectLanesTable";
+import { LaneTable } from "@/src/components/tables/LaneTable";
 
 export const Grid = () => {
   const { isGridVisible, toggle } = useGridStore();
@@ -37,7 +37,15 @@ export const Grid = () => {
 
           {/* プロジェクトレーンテーブル */}
           <div>
-            <ProjectLanesTable />
+            <LaneTable />
+          </div>
+
+          {/* ショートカットキーの説明 */}
+          <div className="mt-4 text-xs text-gray-600 px-2 border-t pt-3">
+            <ul className="list-disc list-inside space-y-1">
+              <li>Ctrl + Enter: 下に行を追加</li>
+              <li>Ctrl + Shift + K: 行を削除</li>
+            </ul>
           </div>
         </div>
       </div>
