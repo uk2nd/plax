@@ -1,9 +1,11 @@
 "use client";
 
-import { useGrid } from "@/src/contexts/GridContext";
+import { useGridStore } from "@/src/stores/gridStore";
+import { MilestoneTable } from "@/src/components/tables/MilestoneTable";
+import { ProjectLanesTable } from "@/src/components/tables/ProjectLanesTable";
 
 export const Grid = () => {
-  const { isGridVisible, toggle } = useGrid();
+  const { isGridVisible, toggle } = useGridStore();
 
   if (!isGridVisible) {
     return (
@@ -27,11 +29,15 @@ export const Grid = () => {
 
       {/* グリッド本体（スクロール可能エリア） */}
       <div className="flex-1 overflow-auto p-4">
-        {/* 仮のコンテンツ */}
-        <div className="space-y-4">
-          <p className="text-sm text-gray-400">ここにExcel風のグリッドが表示されます</p>
-          <div className="h-[1000px] border border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50">
-            スクロール確認用の長いスペース
+        <div className="space-y-6">
+          {/* マイルストーンテーブル */}
+          <div>
+            <MilestoneTable />
+          </div>
+
+          {/* プロジェクトレーンテーブル */}
+          <div>
+            <ProjectLanesTable />
           </div>
         </div>
       </div>

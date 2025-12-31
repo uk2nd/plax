@@ -3,8 +3,6 @@
 import { Sidebar } from "@/src/components/layout/Sidebar";
 import { Grid } from "@/src/components/layout/Grid";
 import { Preview } from "@/src/components/layout/Preview";
-import { SidebarProvider, useSidebar } from "@/src/contexts/SidebarContext";
-import { GridProvider, useGrid } from "@/src/contexts/GridContext";
 
 const MainLayout = () => {
   return (
@@ -24,11 +22,5 @@ const MainLayout = () => {
 };
 
 export default function Home() {
-  return (
-    <SidebarProvider>
-      <GridProvider>
-        <MainLayout />
-      </GridProvider>
-    </SidebarProvider>
-  );
+  return <MainLayout />;
 }

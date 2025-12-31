@@ -1,9 +1,9 @@
 "use client";
 
-import { useSidebar } from "@/src/contexts/SidebarContext";
+import { useSidebarStore } from "@/src/stores/sidebarStore";
 
 export const Sidebar = () => {
-  const { isSidebarVisible, toggle } = useSidebar();
+  const { isSidebarVisible, toggle } = useSidebarStore();
 
   if (!isSidebarVisible) {
     return (
