@@ -39,6 +39,16 @@ const initialData: TaskRow[] = [createEmptyRow()];
 
 export const LaneTable = () => {
   const [data, setData] = useState<TaskRow[]>(initialData);
+  const [reorderMode, setReorderMode] = useState<{
+    active: boolean;
+    sourceIndex: number;
+    targetIndex: number;
+  } | null>(null);
+  const [dragState, setDragState] = useState<{
+    isDragging: boolean;
+    sourceIndex: number;
+    targetIndex: number | null;
+  } | null>(null);
   const { handleComplexGridKeyDown } = useTableKeyboardNavigation();
 
   // 行を追加する関数（カーソル位置の下に追加）
@@ -69,6 +79,84 @@ export const LaneTable = () => {
       
       return newData;
     });
+  };
+
+  const moveRow = (fromIndex: number, toIndex: number) => {
+    setData((old) => {
+      const newData = [...old];
+      const [movedRow] = newData.splice(fromIndex, 1);
+      newData.splice(toIndex, 0, movedRow);
+      return newData;
+    });
+  };
+
+  const handleReorderButtonClick = (rowIndex: number) => {
+    setReorderMode({
+      active: true,
+      sourceIndex: rowIndex,
+      targetIndex: rowIndex,
+    });
+  };
+
+  const handleReorderKeyDown = (e: React.KeyboardEvent, rowIndex: number) => {
+    if (!reorderMode) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleReorderButtonClick(rowIndex);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setReorderMode((prev) => {
+        if (!prev) return null;
+        const newTargetIndex = Math.max(0, prev.targetIndex - 1);
+        return { ...prev, targetIndex: newTargetIndex };
+      });
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setReorderMode((prev) => {
+        if (!prev) return null;
+        const newTargetIndex = Math.min(data.length - 1, prev.targetIndex + 1);
+        return { ...prev, targetIndex: newTargetIndex };
+      });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (reorderMode.sourceIndex !== reorderMode.targetIndex) {
+        moveRow(reorderMode.sourceIndex, reorderMode.targetIndex);
+      }
+      setReorderMode(null);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setReorderMode(null);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, rowIndex: number) => {
+    setDragState({ isDragging: true, sourceIndex: rowIndex, targetIndex: null });
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(rowIndex));
+  };
+
+  const handleDragOver = (e: React.DragEvent, rowIndex: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragState && dragState.sourceIndex !== rowIndex) {
+      setDragState(prev => prev ? { ...prev, targetIndex: rowIndex } : null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (dragState && dragState.sourceIndex !== targetIndex) {
+      moveRow(dragState.sourceIndex, targetIndex);
+    }
+    setDragState(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragState(null);
   };
 
   const updateData = (rowId: string, columnId: string, value: string) => {
@@ -258,7 +346,22 @@ export const LaneTable = () => {
                 type="text"
                 value={laneValue}
                 onChange={(e) => updateData(row.id, "lane", e.target.value)}
-                onKeyDown={(e) => handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow)}
+                onKeyDown={(e) => {
+                  handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
+                  // 右矢印で次の列が非活性なら並び替えボタンに移動
+                  if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                    const currentCell = e.currentTarget.closest('td');
+                    const currentRow = currentCell?.closest('tr');
+                    const nextInput = currentRow?.querySelector('input[data-col="1"]') as HTMLInputElement;
+                    if (nextInput && nextInput.disabled) {
+                      const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                      if (button) {
+                        e.preventDefault();
+                        button.focus();
+                      }
+                    }
+                  }
+                }}
                 data-row-id={row.id}
                 data-col={0}
                 className={`flex-1 border-none outline-none bg-transparent px-0 focus:ring-0 ${row.depth === 0 ? "font-semibold" : ""}`}
@@ -279,7 +382,22 @@ export const LaneTable = () => {
               type="text"
               value={info.getValue()}
               onChange={(e) => updateData(info.row.id, "arrow", e.target.value)}
-              onKeyDown={(e) => handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow)}
+              onKeyDown={(e) => {
+                handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow);
+                // 右矢印で次の列が非活性なら並び替えボタンに移動
+                if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                  const currentCell = e.currentTarget.closest('td');
+                  const currentRow = currentCell?.closest('tr');
+                  const nextInput = currentRow?.querySelector('input[data-col="2"]') as HTMLInputElement;
+                  if (nextInput && nextInput.disabled) {
+                    const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                    if (button) {
+                      e.preventDefault();
+                      button.focus();
+                    }
+                  }
+                }
+              }}
               data-row-id={info.row.id}
               data-col={1}
               disabled={isDisabled}
@@ -306,7 +424,22 @@ export const LaneTable = () => {
                   updateData(info.row.id, "startDate", formatted);
                 }
               }}
-              onKeyDown={(e) => handleComplexGridKeyDown(e, info.row.id, 2, 5, addRowBelow, deleteRow)}
+              onKeyDown={(e) => {
+                handleComplexGridKeyDown(e, info.row.id, 2, 5, addRowBelow, deleteRow);
+                // 右矢印で次の列が非活性なら並び替えボタンに移動
+                if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                  const currentCell = e.currentTarget.closest('td');
+                  const currentRow = currentCell?.closest('tr');
+                  const nextInput = currentRow?.querySelector('input[data-col="3"]') as HTMLInputElement;
+                  if (nextInput && nextInput.disabled) {
+                    const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                    if (button) {
+                      e.preventDefault();
+                      button.focus();
+                    }
+                  }
+                }
+              }}
               data-row-id={info.row.id}
               data-col={2}
               disabled={isDisabled}
@@ -332,7 +465,22 @@ export const LaneTable = () => {
               type="text"
               value={info.getValue()}
               onChange={(e) => updateData(info.row.id, "duration", e.target.value)}
-              onKeyDown={(e) => handleComplexGridKeyDown(e, info.row.id, 3, 5, addRowBelow, deleteRow)}
+              onKeyDown={(e) => {
+                handleComplexGridKeyDown(e, info.row.id, 3, 5, addRowBelow, deleteRow);
+                // 右矢印で次の列が非活性なら並び替えボタンに移動
+                if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                  const currentCell = e.currentTarget.closest('td');
+                  const currentRow = currentCell?.closest('tr');
+                  const nextInput = currentRow?.querySelector('input[data-col="4"]') as HTMLInputElement;
+                  if (nextInput && nextInput.disabled) {
+                    const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                    if (button) {
+                      e.preventDefault();
+                      button.focus();
+                    }
+                  }
+                }
+              }}
               data-row-id={info.row.id}
               data-col={3}
               disabled={isDisabled}
@@ -359,7 +507,19 @@ export const LaneTable = () => {
                   updateData(info.row.id, "endDate", formatted);
                 }
               }}
-              onKeyDown={(e) => handleComplexGridKeyDown(e, info.row.id, 4, 5, addRowBelow, deleteRow)}
+              onKeyDown={(e) => {
+                handleComplexGridKeyDown(e, info.row.id, 4, 5, addRowBelow, deleteRow);
+                // 右矢印で並び替えボタンに移動
+                if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                  const currentCell = e.currentTarget.closest('td');
+                  const currentRow = currentCell?.closest('tr');
+                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                  if (button) {
+                    e.preventDefault();
+                    button.focus();
+                  }
+                }
+              }}
               data-row-id={info.row.id}
               data-col={4}
               disabled={isDisabled}
@@ -410,17 +570,27 @@ export const LaneTable = () => {
           {table.getRowModel().rows.map((row) => {
             const isPhaseRow = row.depth === 0 && row.original.subRows;
             const isEmptyRow = row.original.lane === "-";
+            const isReorderSource = reorderMode?.sourceIndex === row.index;
+            const isReorderTarget = reorderMode?.targetIndex === row.index;
+            const isDragSource = dragState?.isDragging && dragState.sourceIndex === row.index;
+            const isDragTarget = dragState?.targetIndex === row.index && dragState.sourceIndex !== row.index;
 
             return (
               <tr
                 key={row.id}
                 className={`${
-                  isPhaseRow
+                  isReorderSource
+                    ? "bg-gray-200"
+                    : isReorderTarget || isDragTarget
+                    ? "bg-blue-100"
+                    : isPhaseRow
                     ? "bg-gray-200"
                     : isEmptyRow
                     ? "bg-white"
                     : "bg-white hover:bg-gray-50"
-                }`}
+                } ${isDragSource || isReorderSource ? 'opacity-50' : ''}`}
+                onDragOver={(e) => handleDragOver(e, row.index)}
+                onDrop={(e) => handleDrop(e, row.index)}
               >
                 {row.getVisibleCells().map((cell) => (
                   <td
@@ -432,8 +602,59 @@ export const LaneTable = () => {
                 ))}
                 <td className="border border-gray-300 px-2 py-2 text-center">
                   {!isEmptyRow && (
-                    <button className="text-gray-500 hover:text-gray-700">
-                      ⋮
+                    <button 
+                      className="text-gray-500 hover:text-gray-700 cursor-move"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, row.index)}
+                      onDragEnd={handleDragEnd}
+                      onKeyDown={(e) => {
+                        // 左矢印で最後の有効な列に戻る
+                        if (e.key === "ArrowLeft" && !reorderMode) {
+                          e.preventDefault();
+                          const currentRow = e.currentTarget.closest('tr');
+                          // 後ろから順に有効なinputを探す
+                          for (let col = 4; col >= 0; col--) {
+                            const input = currentRow?.querySelector(`input[data-col="${col}"]`) as HTMLInputElement;
+                            if (input && !input.disabled) {
+                              input.focus();
+                              input.setSelectionRange(input.value.length, input.value.length);
+                              break;
+                            }
+                          }
+                          return;
+                        }
+                        // 上下矢印で他の行の並び替えボタンに移動
+                        if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !reorderMode) {
+                          e.preventDefault();
+                          const currentRow = e.currentTarget.closest('tr');
+                          const allRows = Array.from(currentRow?.parentElement?.querySelectorAll('tr') || []);
+                          const currentIndex = allRows.indexOf(currentRow as HTMLTableRowElement);
+                          
+                          if (e.key === "ArrowUp" && currentIndex > 0) {
+                            for (let i = currentIndex - 1; i >= 0; i--) {
+                              const prevButton = allRows[i]?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                              if (prevButton) {
+                                prevButton.focus();
+                                break;
+                              }
+                            }
+                          } else if (e.key === "ArrowDown" && currentIndex < allRows.length - 1) {
+                            for (let i = currentIndex + 1; i < allRows.length; i++) {
+                              const nextButton = allRows[i]?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                              if (nextButton) {
+                                nextButton.focus();
+                                break;
+                              }
+                            }
+                          }
+                          return;
+                        }
+                        handleReorderKeyDown(e, row.index);
+                      }}
+                      tabIndex={0}
+                      data-reorder-row={row.index}
+                    >
+                      ≡
                     </button>
                   )}
                 </td>

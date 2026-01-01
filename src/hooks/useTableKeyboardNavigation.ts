@@ -12,11 +12,51 @@ export const useTableKeyboardNavigation = () => {
     e: KeyboardEvent<HTMLInputElement>,
     rowIndex: number,
     colIndex: number,
-    totalCols: number
+    totalCols: number,
+    addRowBelow?: (rowId: string) => void,
+    deleteRow?: (rowId: string) => void
   ) => {
     const input = e.currentTarget;
     let nextRow = rowIndex;
     let nextCol = colIndex;
+
+    // Ctrl + Shift + K で行を削除
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') {
+      e.preventDefault();
+      if (deleteRow) {
+        deleteRow(String(rowIndex));
+        // 削除後、次の行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          const nextInput = document.querySelector(
+            `input[data-row="${rowIndex}"][data-col="${colIndex}"]`
+          ) as HTMLInputElement;
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+          }
+        }, 50);
+      }
+      return;
+    }
+
+    // Ctrl + Enter で行を追加
+    if (e.ctrlKey && !e.shiftKey && e.code === 'Enter') {
+      e.preventDefault();
+      if (addRowBelow) {
+        addRowBelow(String(rowIndex));
+        // 新しい行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          const nextInput = document.querySelector(
+            `input[data-row="${rowIndex + 1}"][data-col="${colIndex}"]`
+          ) as HTMLInputElement;
+          if (nextInput) {
+            nextInput.focus();
+            nextInput.select();
+          }
+        }, 50);
+      }
+      return;
+    }
 
     switch (e.key) {
       case "ArrowRight":
