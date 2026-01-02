@@ -13,16 +13,16 @@ export const applyDateAutoCompletion = (
   columnId: string,
   value: string
 ): void => {
-  // レーンに文字が入力された場合（「┗」以外）、矢羽根・開始日・期間・終了日を空欄にする
+  // レーンに文字が入力された場合（「┗」以外）、タスク・開始日・期間・終了日を空欄にする
   if (columnId === 'lane' && value.trim() !== '' && value.trim() !== '┗') {
-    currentRow.arrow = '';
+    currentRow.task = '';
     currentRow.startDate = '';
     currentRow.duration = '';
     currentRow.endDate = '';
   }
 
-  // 矢羽根・開始日・期間・終了日に文字が入力された場合、レーンに「┗」を自動入力
-  if (['arrow', 'startDate', 'duration', 'endDate'].includes(columnId) && value.trim() !== '') {
+  // タスク・開始日・期間・終了日に文字が入力された場合、レーンに「┗」を自動入力
+  if (['task', 'startDate', 'duration', 'endDate'].includes(columnId) && value.trim() !== '') {
     if (currentRow.lane.trim() === '') {
       currentRow.lane = '┗';
     }

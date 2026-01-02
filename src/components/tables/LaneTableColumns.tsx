@@ -3,11 +3,10 @@ import { formatDateInput } from "@/src/utils/dateFormat";
 
 export type TaskRow = {
   lane: string;
-  arrow: string;
+  task: string;
   startDate: string;
   duration: string;
   endDate: string;
-  subRows?: TaskRow[];
 };
 
 type LaneColumnOptions = {
@@ -37,53 +36,37 @@ export const createLaneColumns = ({
       header: "レーン",
       cell: ({ row, getValue }) => {
         const laneValue = getValue();
-        const hasLaneText = laneValue.trim() !== '';
         
         return (
-          <div
-            style={{
-              paddingLeft: `${row.depth * 1}rem`,
-            }}
-            className="flex items-center gap-2"
-          >
-            {row.getCanExpand() && (
-              <button
-                onClick={row.getToggleExpandedHandler()}
-                className="cursor-pointer"
-              >
-                {row.getIsExpanded() ? "▼" : "▶"}
-              </button>
-            )}
-            <input
-              type="text"
-              value={laneValue}
-              onChange={(e) => updateData(row.id, "lane", e.target.value)}
-              onKeyDown={(e) => {
-                handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
-                // 右矢印で次の列が非活性なら並び替えボタンに移動
-                if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                  const currentCell = e.currentTarget.closest('td');
-                  const currentRow = currentCell?.closest('tr');
-                  const nextInput = currentRow?.querySelector('input[data-col="1"]') as HTMLInputElement;
-                  if (nextInput && nextInput.disabled) {
-                    const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                    if (button) {
-                      e.preventDefault();
-                      button.focus();
-                    }
+          <input
+            type="text"
+            value={laneValue}
+            onChange={(e) => updateData(row.id, "lane", e.target.value)}
+            onKeyDown={(e) => {
+              handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
+              // 右矢印で次の列が非活性なら並び替えボタンに移動
+              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                const currentCell = e.currentTarget.closest('td');
+                const currentRow = currentCell?.closest('tr');
+                const nextInput = currentRow?.querySelector('input[data-col="1"]') as HTMLInputElement;
+                if (nextInput && nextInput.disabled) {
+                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                  if (button) {
+                    e.preventDefault();
+                    button.focus();
                   }
                 }
-              }}
-              data-row-id={row.id}
-              data-col={0}
-              className={`flex-1 border-none outline-none bg-transparent px-0 focus:ring-0 ${row.depth === 0 ? "font-semibold" : ""}`}
-            />
-          </div>
+              }
+            }}
+            data-row-id={row.id}
+            data-col={0}
+            className="w-full border-none outline-none bg-transparent px-0 focus:ring-0"
+          />
         );
       },
     }),
-    columnHelper.accessor("arrow", {
-      header: "矢羽根",
+    columnHelper.accessor("task", {
+      header: "タスク",
       cell: (info) => {
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
@@ -93,7 +76,7 @@ export const createLaneColumns = ({
           <input
             type="text"
             value={info.getValue()}
-            onChange={(e) => updateData(info.row.id, "arrow", e.target.value)}
+            onChange={(e) => updateData(info.row.id, "task", e.target.value)}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow);
               // 右矢印で次の列が非活性なら並び替えボタンに移動

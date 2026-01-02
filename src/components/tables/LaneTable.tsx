@@ -5,7 +5,6 @@ import {
   useReactTable,
   getCoreRowModel,
   flexRender,
-  getExpandedRowModel,
 } from "@tanstack/react-table";
 import { useTableKeyboardNavigation } from "@/src/hooks/useTableKeyboardNavigation";
 import { useTableReordering } from "@/src/hooks/useTableReordering";
@@ -20,7 +19,7 @@ import { TaskRow, createLaneColumns } from "./LaneTableColumns";
 
 const createEmptyRow = (): TaskRow => ({
   lane: "",
-  arrow: "",
+  task: "",
   startDate: "",
   duration: "",
   endDate: "",
@@ -61,52 +60,29 @@ export const LaneTable = () => {
   const updateData = (rowId: string, columnId: string, value: string) => {
     setData((old) => {
       const newData = [...old];
-      let updatedRowIndex = -1;
+      const rowIndex = parseInt(rowId);
       
-      const updateRow = (rows: TaskRow[], targetId: string): TaskRow | null => {
-        for (let i = 0; i < rows.length; i++) {
-          const currentId = `${i}`;
-          if (currentId === targetId) {
-            rows[i] = { ...rows[i], [columnId]: value };
-            updatedRowIndex = i;
-            return rows[i];
-          }
-          if (rows[i].subRows) {
-            const subRowIds = targetId.split('.');
-            if (subRowIds[0] === currentId && subRowIds.length > 1) {
-              const subIndex = parseInt(subRowIds[1]);
-              if (rows[i].subRows![subIndex]) {
-                rows[i].subRows![subIndex] = {
-                  ...rows[i].subRows![subIndex],
-                  [columnId]: value,
-                };
-                return rows[i].subRows![subIndex];
-              }
-            }
-          }
-        }
-        return null;
-      };
-      
-      const currentRow = updateRow(newData, rowId);
-
-      // 日付自動補完ロジックを適用
-      if (currentRow) {
-        applyDateAutoCompletion(currentRow, columnId, value);
+      if (rowIndex >= 0 && rowIndex < newData.length) {
+        newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
+        
+        // 日付自動補完ロジックを適用
+        applyDateAutoCompletion(newData[rowIndex], columnId, value);
+        
+        // 最下行に入力があった場合のみ、新しい空行を追加
+        return addEmptyRowIfNeeded(
+          newData,
+          rowIndex,
+          (row) =>
+            row.lane.trim() !== "" ||
+            row.task.trim() !== "" ||
+            row.startDate.trim() !== "" ||
+            row.duration.trim() !== "" ||
+            row.endDate.trim() !== "",
+          createEmptyRow
+        );
       }
-
-      // 最下行に入力があった場合のみ、新しい空行を追加
-      return addEmptyRowIfNeeded(
-        newData,
-        updatedRowIndex,
-        (row) =>
-          row.lane.trim() !== "" ||
-          row.arrow.trim() !== "" ||
-          row.startDate.trim() !== "" ||
-          row.duration.trim() !== "" ||
-          row.endDate.trim() !== "",
-        createEmptyRow
-      );
+      
+      return newData;
     });
   };
 
@@ -124,11 +100,6 @@ export const LaneTable = () => {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getExpandedRowModel: getExpandedRowModel(),
-    getSubRows: (row) => row.subRows,
-    initialState: {
-      expanded: true,
-    },
   });
 
   return (
@@ -156,7 +127,6 @@ export const LaneTable = () => {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => {
-            const isPhaseRow = row.depth === 0 && row.original.subRows;
             const isEmptyRow = row.original.lane === "-";
             const isReorderSource = reorderMode?.sourceIndex === row.index;
             const isReorderTarget = reorderMode?.targetIndex === row.index;
@@ -171,8 +141,6 @@ export const LaneTable = () => {
                     ? "bg-gray-200"
                     : isReorderTarget || isDragTarget
                     ? "bg-blue-100"
-                    : isPhaseRow
-                    ? "bg-gray-200"
                     : isEmptyRow
                     ? "bg-white"
                     : "bg-white hover:bg-gray-50"
