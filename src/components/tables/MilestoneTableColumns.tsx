@@ -1,6 +1,7 @@
 import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { formatDateInput } from "@/src/utils/dateFormat";
 import { TABLE_INPUT_CLASSES } from "@/src/constants/tableStyles";
+import { useScheduleStore } from "@/src/stores/scheduleStore";
 
 export type Milestone = {
   name: string;
@@ -32,53 +33,74 @@ export const createMilestoneColumns = ({
   return [
     columnHelper.accessor("name", {
       header: "マイルストン",
-      cell: (info) => (
-        <input
-          type="text"
-          value={info.getValue()}
-          onChange={(e) =>
-            updateData(info.row.index, info.column.id, e.target.value)
-          }
-          onKeyDown={(e) => handleSimpleGridKeyDown(e, info.row.index, 0, 2, addRowBelow, deleteRow)}
-          data-row={info.row.index}
-          data-col={0}
-          className={TABLE_INPUT_CLASSES}
-        />
-      ),
+      cell: (info) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setMilestone = useScheduleStore((state) => state.setMilestone);
+        
+        const handleBlur = () => {
+          const row = info.row.original;
+          setMilestone(info.row.index, row.name, row.date);
+        };
+        
+        return (
+          <input
+            type="text"
+            value={info.getValue()}
+            onChange={(e) =>
+              updateData(info.row.index, info.column.id, e.target.value)
+            }
+            onBlur={handleBlur}
+            onKeyDown={(e) => handleSimpleGridKeyDown(e, info.row.index, 0, 2, addRowBelow, deleteRow)}
+            data-row={info.row.index}
+            data-col={0}
+            className={TABLE_INPUT_CLASSES}
+          />
+        );
+      },
     }),
     columnHelper.accessor("date", {
       header: "日付",
-      cell: (info) => (
-        <input
-          type="text"
-          value={info.getValue()}
-          onChange={(e) =>
-            updateData(info.row.index, info.column.id, e.target.value)
+      cell: (info) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setMilestone = useScheduleStore((state) => state.setMilestone);
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const formatted = formatDateInput(e.target.value);
+          if (formatted !== e.target.value) {
+            updateData(info.row.index, info.column.id, formatted);
           }
-          onBlur={(e) => {
-            const formatted = formatDateInput(e.target.value);
-            if (formatted !== e.target.value) {
-              updateData(info.row.index, info.column.id, formatted);
+          
+          const row = info.row.original;
+          setMilestone(info.row.index, row.name, formatted || row.date);
+        };
+        
+        return (
+          <input
+            type="text"
+            value={info.getValue()}
+            onChange={(e) =>
+              updateData(info.row.index, info.column.id, e.target.value)
             }
-          }}
-          onKeyDown={(e) => {
-            handleSimpleGridKeyDown(e, info.row.index, 1, 2, addRowBelow, deleteRow);
-            // 右矢印で並び替えボタンに移動
-            if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-              const currentCell = e.currentTarget.closest('td');
-              const currentRow = currentCell?.closest('tr');
-              const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-              if (button) {
-                e.preventDefault();
-                button.focus();
+            onBlur={handleBlur}
+            onKeyDown={(e) => {
+              handleSimpleGridKeyDown(e, info.row.index, 1, 2, addRowBelow, deleteRow);
+              // 右矢印で並び替えボタンに移動
+              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
+                const currentCell = e.currentTarget.closest('td');
+                const currentRow = currentCell?.closest('tr');
+                const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
+                if (button) {
+                  e.preventDefault();
+                  button.focus();
+                }
               }
-            }
-          }}
-          data-row={info.row.index}
-          data-col={1}
-          className={TABLE_INPUT_CLASSES}
-        />
-      ),
+            }}
+            data-row={info.row.index}
+            data-col={1}
+            className={TABLE_INPUT_CLASSES}
+          />
+        );
+      },
     }),
   ];
 };

@@ -1,5 +1,6 @@
 import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { formatDateInput } from "@/src/utils/dateFormat";
+import { useScheduleStore } from "@/src/stores/scheduleStore";
 
 export type TaskRow = {
   lane: string;
@@ -35,13 +36,32 @@ export const createLaneColumns = ({
     columnHelper.accessor("lane", {
       header: "レーン",
       cell: ({ row, getValue }) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
         const laneValue = getValue();
+        
+        const handleBlur = () => {
+          const rowIndex = parseInt(row.id);
+          const rowData = row.original;
+          const isLane = laneValue.trim() !== '' && laneValue.trim() !== '┗';
+          
+          // レーン行かタスク行かを判定して保存
+          setLaneOrTask(
+            rowIndex,
+            isLane,
+            rowData.lane,
+            rowData.task,
+            rowData.startDate,
+            rowData.endDate
+          );
+        };
         
         return (
           <input
             type="text"
             value={laneValue}
             onChange={(e) => updateData(row.id, "lane", e.target.value)}
+            onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
               // 右矢印で次の列が非活性なら並び替えボタンに移動
@@ -68,15 +88,34 @@ export const createLaneColumns = ({
     columnHelper.accessor("task", {
       header: "タスク",
       cell: (info) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        
+        const handleBlur = () => {
+          const rowIndex = parseInt(info.row.id);
+          const rowData = info.row.original;
+          const isLane = hasLaneText;
+          
+          // レーン行かタスク行かを判定して保存
+          setLaneOrTask(
+            rowIndex,
+            isLane,
+            rowData.lane,
+            rowData.task,
+            rowData.startDate,
+            rowData.endDate
+          );
+        };
         
         return (
           <input
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "task", e.target.value)}
+            onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow);
               // 右矢印で次の列が非活性なら並び替えボタンに移動
@@ -104,21 +143,39 @@ export const createLaneColumns = ({
     columnHelper.accessor("startDate", {
       header: "開始日",
       cell: (info) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const formatted = formatDateInput(e.target.value);
+          if (formatted !== e.target.value) {
+            updateData(info.row.id, "startDate", formatted);
+          }
+          
+          const rowIndex = parseInt(info.row.id);
+          const rowData = info.row.original;
+          const isLane = hasLaneText;
+          
+          // レーン行かタスク行かを判定して保存
+          setLaneOrTask(
+            rowIndex,
+            isLane,
+            rowData.lane,
+            rowData.task,
+            formatted || rowData.startDate,
+            rowData.endDate
+          );
+        };
         
         return (
           <input
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "startDate", e.target.value)}
-            onBlur={(e) => {
-              const formatted = formatDateInput(e.target.value);
-              if (formatted !== e.target.value) {
-                updateData(info.row.id, "startDate", formatted);
-              }
-            }}
+            onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 2, 5, addRowBelow, deleteRow);
               // 右矢印で次の列が非活性なら並び替えボタンに移動
@@ -187,21 +244,39 @@ export const createLaneColumns = ({
     columnHelper.accessor("endDate", {
       header: "終了日",
       cell: (info) => {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const formatted = formatDateInput(e.target.value);
+          if (formatted !== e.target.value) {
+            updateData(info.row.id, "endDate", formatted);
+          }
+          
+          const rowIndex = parseInt(info.row.id);
+          const rowData = info.row.original;
+          const isLane = hasLaneText;
+          
+          // レーン行かタスク行かを判定して保存
+          setLaneOrTask(
+            rowIndex,
+            isLane,
+            rowData.lane,
+            rowData.task,
+            rowData.startDate,
+            formatted || rowData.endDate
+          );
+        };
         
         return (
           <input
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "endDate", e.target.value)}
-            onBlur={(e) => {
-              const formatted = formatDateInput(e.target.value);
-              if (formatted !== e.target.value) {
-                updateData(info.row.id, "endDate", formatted);
-              }
-            }}
+            onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 4, 5, addRowBelow, deleteRow);
               // 右矢印で並び替えボタンに移動
