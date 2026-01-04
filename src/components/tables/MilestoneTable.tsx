@@ -15,31 +15,76 @@ import {
   addEmptyRowIfNeeded,
 } from "@/src/utils/tableRowOperations";
 import { Milestone, createMilestoneColumns } from "./MilestoneTableColumns";
+import { useScheduleStore } from "@/src/stores/scheduleStore";
 
-const createEmptyRow = (): Milestone => ({
+type MilestoneWithOrder = Milestone & { order: number };
+
+const createEmptyRow = (order: number): MilestoneWithOrder => ({
   name: "",
   date: "",
+  order,
 });
 
-const initialData: Milestone[] = [createEmptyRow()];
+const initialData: MilestoneWithOrder[] = [createEmptyRow(0)];
 
 export const MilestoneTable = () => {
-  const [data, setData] = useState<Milestone[]>(initialData);
+  const [data, setData] = useState<MilestoneWithOrder[]>(initialData);
   const { handleSimpleGridKeyDown } = useTableKeyboardNavigation();
+  const updateMilestoneOrder = useScheduleStore((state) => state.updateMilestoneOrder);
 
   // 行を追加する関数
   const addRowBelow = (rowId: string) => {
-    setData((old) => addRowBelowUtil(old, rowId, createEmptyRow));
+    setData((old) => {
+      const rowIndex = parseInt(rowId);
+      // 追加先の上下の行のorderの中間値を計算
+      const currentOrder = old[rowIndex].order;
+      const nextOrder = old[rowIndex + 1]?.order ?? currentOrder + 2;
+      const newOrder = (currentOrder + nextOrder) / 2;
+      const newRow = createEmptyRow(newOrder);
+      return addRowBelowUtil(old, rowId, () => newRow);
+    });
   };
 
   // 行を削除する関数
   const deleteRow = (rowId: string) => {
-    setData((old) => deleteRowUtil(old, rowId));
+    setData((old) => {
+      const rowIndex = parseInt(rowId);
+      const rowToDelete = old[rowIndex];
+      
+      // Storeから該当のデータを削除（orderではなくidで削除）
+      if (rowToDelete && rowToDelete.order !== undefined) {
+        // Milestoneの場合、削除対象のidを探してから削除
+        const store = useScheduleStore.getState();
+        const milestone = store.milestones.find((m) => m.order === rowToDelete.order);
+        if (milestone) {
+          store.deleteMilestone(milestone.id);
+        }
+      }
+      
+      return deleteRowUtil(old, rowId);
+    });
   };
 
-  // 行を移動する関数
+  // 行を移動する関数（order値を更新）
   const moveRow = (fromIndex: number, toIndex: number) => {
-    setData((old) => moveRowUtil(old, fromIndex, toIndex));
+    setData((old) => {
+      const result = moveRowUtil(old, fromIndex, toIndex);
+      const movedRow = result[toIndex];
+      const oldOrder = movedRow.order;
+      
+      // 移動先の上下の行のorderの中間値を計算
+      const prevOrder = result[toIndex - 1]?.order ?? (result[toIndex + 1]?.order ?? 1) - 2;
+      const nextOrder = result[toIndex + 1]?.order ?? (result[toIndex - 1]?.order ?? 0) + 2;
+      const newOrder = (prevOrder + nextOrder) / 2;
+      
+      // 移動した行のorderを更新
+      result[toIndex] = { ...movedRow, order: newOrder };
+      
+      // Storeのorder値を更新
+      updateMilestoneOrder(oldOrder, newOrder);
+      
+      return result;
+    });
   };
 
   // 並び替え・ドラッグ&ドロップのロジック
@@ -66,12 +111,14 @@ export const MilestoneTable = () => {
       });
 
       // 最下行に入力があった場合のみ、新しい空行を追加
-      return addEmptyRowIfNeeded(
+      const result = addEmptyRowIfNeeded(
         newData,
         rowIndex,
         (row) => row.name.trim() !== "" || row.date.trim() !== "",
-        createEmptyRow
+        () => createEmptyRow(Math.max(...newData.map(r => r.order)) + 1)
       );
+      
+      return result;
     });
   };
 

@@ -6,6 +6,7 @@ import { useScheduleStore } from "@/src/stores/scheduleStore";
 export type Milestone = {
   name: string;
   date: string;
+  order?: number;
 };
 
 type MilestoneColumnOptions = {
@@ -35,11 +36,26 @@ export const createMilestoneColumns = ({
       header: "マイルストン",
       cell: (info) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setMilestone = useScheduleStore((state) => state.setMilestone);
+        const updateMilestoneName = useScheduleStore((state) => state.updateMilestoneName);
         
-        const handleBlur = () => {
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const row = info.row.original;
-          setMilestone(info.row.index, row.name, row.date);
+          const currentValue = row.name;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
+          
+          console.log('[Milestone Name] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (currentValue !== initialValue) {
+            const order = row.order ?? info.row.index;
+            console.log('[Milestone Name] Sending to Store - Order:', order, 'Name:', row.name);
+            updateMilestoneName(order, row.name);
+          }
         };
         
         return (
@@ -49,6 +65,7 @@ export const createMilestoneColumns = ({
             onChange={(e) =>
               updateData(info.row.index, info.column.id, e.target.value)
             }
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => handleSimpleGridKeyDown(e, info.row.index, 0, 2, addRowBelow, deleteRow)}
             data-row={info.row.index}
@@ -62,7 +79,12 @@ export const createMilestoneColumns = ({
       header: "日付",
       cell: (info) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setMilestone = useScheduleStore((state) => state.setMilestone);
+        const updateMilestoneDate = useScheduleStore((state) => state.updateMilestoneDate);
+        
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
         
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const formatted = formatDateInput(e.target.value);
@@ -71,7 +93,17 @@ export const createMilestoneColumns = ({
           }
           
           const row = info.row.original;
-          setMilestone(info.row.index, row.name, formatted || row.date);
+          const currentValue = formatted || row.date;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
+          
+          console.log('[Milestone Date] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (currentValue !== initialValue) {
+            const order = row.order ?? info.row.index;
+            console.log('[Milestone Date] Sending to Store - Order:', order, 'Date:', currentValue);
+            updateMilestoneDate(order, currentValue);
+          }
         };
         
         return (
@@ -81,6 +113,7 @@ export const createMilestoneColumns = ({
             onChange={(e) =>
               updateData(info.row.index, info.column.id, e.target.value)
             }
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               handleSimpleGridKeyDown(e, info.row.index, 1, 2, addRowBelow, deleteRow);

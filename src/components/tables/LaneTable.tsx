@@ -16,34 +16,75 @@ import {
 } from "@/src/utils/tableRowOperations";
 import { applyDateAutoCompletion } from "@/src/utils/laneTableDateLogic";
 import { TaskRow, createLaneColumns } from "./LaneTableColumns";
+import { useScheduleStore } from "@/src/stores/scheduleStore";
+import { calculateLaneId } from "@/src/utils/laneCalculation";
 
-const createEmptyRow = (): TaskRow => ({
+type TaskRowWithOrder = TaskRow & { order: number };
+
+const createEmptyRow = (order: number): TaskRowWithOrder => ({
   lane: "",
   task: "",
   startDate: "",
   duration: "",
   endDate: "",
+  order,
 });
 
-const initialData: TaskRow[] = [createEmptyRow()];
+const initialData: TaskRowWithOrder[] = [createEmptyRow(0)];
 
 export const LaneTable = () => {
-  const [data, setData] = useState<TaskRow[]>(initialData);
+  const [data, setData] = useState<TaskRowWithOrder[]>(initialData);
   const { handleComplexGridKeyDown } = useTableKeyboardNavigation();
+  const updateLaneTaskOrder = useScheduleStore((state) => state.updateLaneTaskOrder);
 
   // 行を追加する関数
   const addRowBelow = (rowId: string) => {
-    setData((old) => addRowBelowUtil(old, rowId, createEmptyRow));
+    setData((old) => {
+      const rowIndex = parseInt(rowId);
+      // 追加先の上下の行のorderの中間値を計算
+      const currentOrder = old[rowIndex].order;
+      const nextOrder = old[rowIndex + 1]?.order ?? currentOrder + 2;
+      const newOrder = (currentOrder + nextOrder) / 2;
+      const newRow = createEmptyRow(newOrder);
+      return addRowBelowUtil(old, rowId, () => newRow);
+    });
   };
 
   // 行を削除する関数
   const deleteRow = (rowId: string) => {
-    setData((old) => deleteRowUtil(old, rowId));
+    setData((old) => {
+      const rowIndex = parseInt(rowId);
+      const rowToDelete = old[rowIndex];
+      
+      // Storeから該当のデータを削除
+      if (rowToDelete && rowToDelete.order !== undefined) {
+        useScheduleStore.getState().deleteRowData(rowToDelete.order);
+      }
+      
+      return deleteRowUtil(old, rowId);
+    });
   };
 
-  // 行を移動する関数
+  // 行を移動する関数（order値を更新）
   const moveRow = (fromIndex: number, toIndex: number) => {
-    setData((old) => moveRowUtil(old, fromIndex, toIndex));
+    setData((old) => {
+      const result = moveRowUtil(old, fromIndex, toIndex);
+      const movedRow = result[toIndex];
+      const oldOrder = movedRow.order;
+      
+      // 移動先の上下の行のorderの中間値を計算
+      const prevOrder = result[toIndex - 1]?.order ?? (result[toIndex + 1]?.order ?? 1) - 2;
+      const nextOrder = result[toIndex + 1]?.order ?? (result[toIndex - 1]?.order ?? 0) + 2;
+      const newOrder = (prevOrder + nextOrder) / 2;
+      
+      // 移動した行のorderを更新
+      result[toIndex] = { ...movedRow, order: newOrder };
+      
+      // Storeのorder値を更新
+      updateLaneTaskOrder(oldOrder, newOrder);
+      
+      return result;
+    });
   };
 
   // 並び替え・ドラッグ&ドロップのロジック
@@ -63,10 +104,30 @@ export const LaneTable = () => {
       const rowIndex = parseInt(rowId);
       
       if (rowIndex >= 0 && rowIndex < newData.length) {
+        const beforeRow = { ...newData[rowIndex] };
         newData[rowIndex] = { ...newData[rowIndex], [columnId]: value };
         
         // 日付自動補完ロジックを適用
         applyDateAutoCompletion(newData[rowIndex], columnId, value);
+        
+        // 日付が自動算出された場合、Storeに送信
+        const afterRow = newData[rowIndex];
+        const order = afterRow.order ?? rowIndex;
+        const store = useScheduleStore.getState();
+        const lanes = store.lanes;
+        const laneId = calculateLaneId(rowIndex, lanes);
+        
+        // 開始日が自動算出された場合
+        if (columnId !== 'startDate' && beforeRow.startDate !== afterRow.startDate) {
+          console.log('[Auto-calculated StartDate] Order:', order, 'StartDate:', afterRow.startDate, 'LaneId:', laneId);
+          store.updateTaskStartDate(order, afterRow.startDate, laneId);
+        }
+        
+        // 終了日が自動算出された場合
+        if (columnId !== 'endDate' && beforeRow.endDate !== afterRow.endDate) {
+          console.log('[Auto-calculated EndDate] Order:', order, 'EndDate:', afterRow.endDate, 'LaneId:', laneId);
+          store.updateTaskEndDate(order, afterRow.endDate, laneId);
+        }
         
         // 最下行に入力があった場合のみ、新しい空行を追加
         return addEmptyRowIfNeeded(
@@ -78,7 +139,7 @@ export const LaneTable = () => {
             row.startDate.trim() !== "" ||
             row.duration.trim() !== "" ||
             row.endDate.trim() !== "",
-          createEmptyRow
+          () => createEmptyRow(Math.max(...newData.map(r => r.order)) + 1)
         );
       }
       

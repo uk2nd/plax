@@ -1,6 +1,7 @@
 import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { formatDateInput } from "@/src/utils/dateFormat";
 import { useScheduleStore } from "@/src/stores/scheduleStore";
+import { calculateLaneId } from "@/src/utils/laneCalculation";
 
 export type TaskRow = {
   lane: string;
@@ -8,6 +9,7 @@ export type TaskRow = {
   startDate: string;
   duration: string;
   endDate: string;
+  order?: number;
 };
 
 type LaneColumnOptions = {
@@ -37,23 +39,31 @@ export const createLaneColumns = ({
       header: "レーン",
       cell: ({ row, getValue }) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
+        const updateLaneName = useScheduleStore((state) => state.updateLaneName);
         const laneValue = getValue();
         
-        const handleBlur = () => {
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const rowIndex = parseInt(row.id);
           const rowData = row.original;
-          const isLane = laneValue.trim() !== '' && laneValue.trim() !== '┗';
+          const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          // レーン行かタスク行かを判定して保存
-          setLaneOrTask(
-            rowIndex,
-            isLane,
-            rowData.lane,
-            rowData.task,
-            rowData.startDate,
-            rowData.endDate
-          );
+          console.log('[Lane] Initial:', initialValue, 'Current:', rowData.lane, 'Changed:', rowData.lane !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (rowData.lane !== initialValue) {
+            const order = rowData.order ?? rowIndex;
+            const isLane = laneValue.trim() !== '' && laneValue.trim() !== '┋';
+            
+            if (isLane) {
+              console.log('[Lane] Sending to Store - Order:', order, 'Lane Name:', rowData.lane);
+              updateLaneName(order, rowData.lane);
+            }
+          }
         };
         
         return (
@@ -61,6 +71,7 @@ export const createLaneColumns = ({
             type="text"
             value={laneValue}
             onChange={(e) => updateData(row.id, "lane", e.target.value)}
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
@@ -89,25 +100,33 @@ export const createLaneColumns = ({
       header: "タスク",
       cell: (info) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
+        const updateTaskName = useScheduleStore((state) => state.updateTaskName);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const lanes = useScheduleStore((state) => state.lanes);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
         
-        const handleBlur = () => {
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
+        
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const rowIndex = parseInt(info.row.id);
           const rowData = info.row.original;
-          const isLane = hasLaneText;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          // レーン行かタスク行かを判定して保存
-          setLaneOrTask(
-            rowIndex,
-            isLane,
-            rowData.lane,
-            rowData.task,
-            rowData.startDate,
-            rowData.endDate
-          );
+          console.log('[Task] Initial:', initialValue, 'Current:', rowData.task, 'Changed:', rowData.task !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (rowData.task !== initialValue) {
+            const order = rowData.order ?? rowIndex;
+            const laneId = calculateLaneId(rowIndex, lanes);
+            
+            console.log('[Task] Sending to Store - Order:', order, 'Task Name:', rowData.task, 'LaneId:', laneId);
+            updateTaskName(order, rowData.task, laneId);
+          }
         };
         
         return (
@@ -115,6 +134,7 @@ export const createLaneColumns = ({
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "task", e.target.value)}
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow);
@@ -144,10 +164,17 @@ export const createLaneColumns = ({
       header: "開始日",
       cell: (info) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
+        const updateTaskStartDate = useScheduleStore((state) => state.updateTaskStartDate);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const lanes = useScheduleStore((state) => state.lanes);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
         
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const formatted = formatDateInput(e.target.value);
@@ -157,17 +184,19 @@ export const createLaneColumns = ({
           
           const rowIndex = parseInt(info.row.id);
           const rowData = info.row.original;
-          const isLane = hasLaneText;
+          const currentValue = formatted || rowData.startDate;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          // レーン行かタスク行かを判定して保存
-          setLaneOrTask(
-            rowIndex,
-            isLane,
-            rowData.lane,
-            rowData.task,
-            formatted || rowData.startDate,
-            rowData.endDate
-          );
+          console.log('[StartDate] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (currentValue !== initialValue) {
+            const order = rowData.order ?? rowIndex;
+            const laneId = calculateLaneId(rowIndex, lanes);
+            
+            console.log('[StartDate] Sending to Store - Order:', order, 'StartDate:', currentValue, 'LaneId:', laneId);
+            updateTaskStartDate(order, currentValue, laneId);
+          }
         };
         
         return (
@@ -175,6 +204,7 @@ export const createLaneColumns = ({
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "startDate", e.target.value)}
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 2, 5, addRowBelow, deleteRow);
@@ -245,10 +275,17 @@ export const createLaneColumns = ({
       header: "終了日",
       cell: (info) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        const setLaneOrTask = useScheduleStore((state) => state.setLaneOrTask);
+        const updateTaskEndDate = useScheduleStore((state) => state.updateTaskEndDate);
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const lanes = useScheduleStore((state) => state.lanes);
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        
+        const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+          // フォーカス時に現在の値を保存
+          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+        };
         
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
           const formatted = formatDateInput(e.target.value);
@@ -258,17 +295,19 @@ export const createLaneColumns = ({
           
           const rowIndex = parseInt(info.row.id);
           const rowData = info.row.original;
-          const isLane = hasLaneText;
+          const currentValue = formatted || rowData.endDate;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          // レーン行かタスク行かを判定して保存
-          setLaneOrTask(
-            rowIndex,
-            isLane,
-            rowData.lane,
-            rowData.task,
-            rowData.startDate,
-            formatted || rowData.endDate
-          );
+          console.log('[EndDate] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
+          
+          // 値が変更された場合のみStoreに送信
+          if (currentValue !== initialValue) {
+            const order = rowData.order ?? rowIndex;
+            const laneId = calculateLaneId(rowIndex, lanes);
+            
+            console.log('[EndDate] Sending to Store - Order:', order, 'EndDate:', currentValue, 'LaneId:', laneId);
+            updateTaskEndDate(order, currentValue, laneId);
+          }
         };
         
         return (
@@ -276,6 +315,7 @@ export const createLaneColumns = ({
             type="text"
             value={info.getValue()}
             onChange={(e) => updateData(info.row.id, "endDate", e.target.value)}
+            onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={(e) => {
               handleComplexGridKeyDown(e, info.row.id, 4, 5, addRowBelow, deleteRow);

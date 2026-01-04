@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
 // UUID生成関数
 const generateUUID = (): string => {
@@ -9,22 +10,57 @@ const generateUUID = (): string => {
   });
 };
 
+// 共通ヘルパー関数
+
+// 既存項目の更新または新規作成
+function updateOrCreate<T extends { order: number }>(
+  items: T[],
+  order: number,
+  updateFn: (item: T) => T,
+  createFn: () => T
+): T[] {
+  const existingIndex = items.findIndex((item) => item.order === order);
+  
+  if (existingIndex !== -1) {
+    return items.map((item, index) => 
+      index === existingIndex ? updateFn(item) : item
+    );
+  } else {
+    return [...items, createFn()];
+  }
+}
+
+// 部分更新ヘルパー
+function updateItemByOrder<T extends { order: number }>(
+  items: T[],
+  order: number,
+  updates: Partial<T>
+): T[] {
+  return items.map((item) =>
+    item.order === order ? { ...item, ...updates } : item
+  );
+}
+
 // データ型定義
 export type Milestone = {
   id: string;
+  order: number;
   name: string;
   date: string;
 };
 
 export type Lane = {
   id: string;
-  rowIndex: number;
+  order: number;
+  type: 'lane' | 'task';
   name: string;
 };
 
 export type Task = {
   id: string;
-  rowIndex: number;
+  order: number;
+  type: 'lane' | 'task';
+  laneId: string;
   name: string;
   startDate: string;
   endDate: string;
@@ -36,68 +72,83 @@ type ScheduleStore = {
   tasks: Task[];
   
   // Milestone操作
-  setMilestone: (rowIndex: number, name: string, date: string) => void;
+  setMilestone: (order: number, name: string, date: string) => void;
+  updateMilestoneName: (order: number, name: string) => void;
+  updateMilestoneDate: (order: number, date: string) => void;
   deleteMilestone: (id: string) => void;
+  updateMilestoneOrder: (oldOrder: number, newOrder: number) => void;
   
   // Lane/Task操作（統合）
   setLaneOrTask: (
-    rowIndex: number,
+    order: number,
     isLane: boolean,
     laneName: string,
     taskName: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    laneId?: string
   ) => void;
-  deleteRowData: (rowIndex: number) => void;
+  updateLaneName: (order: number, name: string) => void;
+  updateTaskName: (order: number, name: string, laneId?: string) => void;
+  updateTaskStartDate: (order: number, startDate: string, laneId?: string) => void;
+  updateTaskEndDate: (order: number, endDate: string, laneId?: string) => void;
+  deleteRowData: (order: number) => void;
+  updateLaneTaskOrder: (oldOrder: number, newOrder: number) => void;
   
   // ユーティリティ
   clearAll: () => void;
 };
 
-export const useScheduleStore = create<ScheduleStore>((set) => ({
-  milestones: [],
-  lanes: [],
-  tasks: [],
+export const useScheduleStore = create<ScheduleStore>()(
+  devtools(
+    (set) => ({
+      milestones: [],
+      lanes: [],
+      tasks: [],
   
   // Milestoneを設定または更新
-  setMilestone: (rowIndex: number, name: string, date: string) => {
+  setMilestone: (order: number, name: string, date: string) => {
     set((state) => {
       // 空の値の場合は削除
       if (name.trim() === '' && date.trim() === '') {
         return {
-          milestones: state.milestones.filter((m) => {
-            // rowIndexを使って特定できないため、空のデータをクリーンアップ
-            return m.name.trim() !== '' || m.date.trim() !== '';
-          })
+          milestones: state.milestones.filter((m) => 
+            m.name.trim() !== '' || m.date.trim() !== ''
+          )
         };
       }
       
-      // 既存のマイルストーンをrowIndexで検索（簡易的にインデックスで管理）
-      const existingIndex = state.milestones.findIndex((_, idx) => idx === rowIndex);
-      
-      if (existingIndex >= 0) {
-        // 既存のマイルストーンを更新
-        const updatedMilestones = [...state.milestones];
-        updatedMilestones[existingIndex] = {
-          ...updatedMilestones[existingIndex],
-          name,
-          date,
-        };
-        return { milestones: updatedMilestones };
-      } else {
-        // 新しいマイルストーンを追加
-        return {
-          milestones: [
-            ...state.milestones,
-            {
-              id: generateUUID(),
-              name,
-              date,
-            },
-          ],
-        };
-      }
+      return {
+        milestones: updateOrCreate(
+          state.milestones,
+          order,
+          (m) => ({ ...m, name, date }),
+          () => ({ id: generateUUID(), order, name, date })
+        )
+      };
     });
+  },
+  
+  updateMilestoneName: (order: number, name: string) => {
+    set((state) => ({
+      milestones: updateOrCreate(
+        state.milestones,
+        order,
+        (m) => ({ ...m, name }),
+        () => ({ id: generateUUID(), order, name, date: '' })
+      )
+    }));
+  },
+  
+  updateMilestoneDate: (order: number, date: string) => {
+    set((state) => ({
+      milestones: updateOrCreate(
+        state.milestones,
+        order,
+        (m) => ({ ...m, date }),
+        () => ({ id: generateUUID(), order, name: '', date })
+      )
+    }));
   },
   
   deleteMilestone: (id: string) => {
@@ -106,93 +157,143 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
     }));
   },
   
+  updateMilestoneOrder: (oldOrder: number, newOrder: number) => {
+    set((state) => ({
+      milestones: updateItemByOrder(state.milestones, oldOrder, { order: newOrder })
+    }));
+  },
+  
   // LaneまたはTaskを設定または更新（統合版）
   setLaneOrTask: (
-    rowIndex: number,
+    order: number,
     isLane: boolean,
     laneName: string,
     taskName: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    laneId?: string
   ) => {
     set((state) => {
       if (isLane) {
         // レーン行の処理
         if (laneName.trim() === '') {
-          // 空の場合は削除
-          return {
-            lanes: state.lanes.filter((l) => l.rowIndex !== rowIndex),
-          };
+          return { lanes: state.lanes.filter((l) => l.order !== order) };
         }
         
-        // 既存のレーンを検索
-        const existingLane = state.lanes.find((l) => l.rowIndex === rowIndex);
-        
-        if (existingLane) {
-          // 既存のレーンを更新
-          return {
-            lanes: state.lanes.map((l) =>
-              l.rowIndex === rowIndex ? { ...l, name: laneName } : l
-            ),
-          };
-        } else {
-          // 新しいレーンを追加
-          return {
-            lanes: [
-              ...state.lanes,
-              {
-                id: generateUUID(),
-                rowIndex,
-                name: laneName,
-              },
-            ],
-          };
-        }
+        return {
+          lanes: updateOrCreate(
+            state.lanes,
+            order,
+            (l) => ({ ...l, name: laneName }),
+            () => ({ id: generateUUID(), order, type: 'lane' as const, name: laneName })
+          )
+        };
       } else {
         // タスク行の処理
         if (taskName.trim() === '' && startDate.trim() === '' && endDate.trim() === '') {
-          // 空の場合は削除
-          return {
-            tasks: state.tasks.filter((t) => t.rowIndex !== rowIndex),
-          };
+          return { tasks: state.tasks.filter((t) => t.order !== order) };
         }
         
-        // 既存のタスクを検索
-        const existingTask = state.tasks.find((t) => t.rowIndex === rowIndex);
-        
-        if (existingTask) {
-          // 既存のタスクを更新
-          return {
-            tasks: state.tasks.map((t) =>
-              t.rowIndex === rowIndex
-                ? { ...t, name: taskName, startDate, endDate }
-                : t
-            ),
-          };
-        } else {
-          // 新しいタスクを追加
-          return {
-            tasks: [
-              ...state.tasks,
-              {
-                id: generateUUID(),
-                rowIndex,
-                name: taskName,
-                startDate,
-                endDate,
-              },
-            ],
-          };
-        }
+        return {
+          tasks: updateOrCreate(
+            state.tasks,
+            order,
+            (t) => ({ ...t, name: taskName, startDate, endDate, laneId: laneId || '' }),
+            () => ({
+              id: generateUUID(),
+              order,
+              type: 'task' as const,
+              laneId: laneId || '',
+              name: taskName,
+              startDate,
+              endDate,
+            })
+          )
+        };
       }
     });
   },
   
-  // 指定されたrowIndexのデータを削除
-  deleteRowData: (rowIndex: number) => {
+  updateLaneName: (order: number, name: string) => {
     set((state) => ({
-      lanes: state.lanes.filter((l) => l.rowIndex !== rowIndex),
-      tasks: state.tasks.filter((t) => t.rowIndex !== rowIndex),
+      lanes: updateOrCreate(
+        state.lanes,
+        order,
+        (l) => ({ ...l, name }),
+        () => ({ id: generateUUID(), order, type: 'lane' as const, name })
+      )
+    }));
+  },
+  
+  updateTaskName: (order: number, name: string, laneId?: string) => {
+    set((state) => ({
+      tasks: updateOrCreate(
+        state.tasks,
+        order,
+        (t) => ({ ...t, name, laneId: laneId || t.laneId }),
+        () => ({
+          id: generateUUID(),
+          order,
+          type: 'task' as const,
+          laneId: laneId || '',
+          name,
+          startDate: '',
+          endDate: '',
+        })
+      )
+    }));
+  },
+  
+  updateTaskStartDate: (order: number, startDate: string, laneId?: string) => {
+    set((state) => ({
+      tasks: updateOrCreate(
+        state.tasks,
+        order,
+        (t) => ({ ...t, startDate, laneId: laneId || t.laneId }),
+        () => ({
+          id: generateUUID(),
+          order,
+          type: 'task' as const,
+          laneId: laneId || '',
+          name: '',
+          startDate,
+          endDate: '',
+        })
+      )
+    }));
+  },
+  
+  updateTaskEndDate: (order: number, endDate: string, laneId?: string) => {
+    set((state) => ({
+      tasks: updateOrCreate(
+        state.tasks,
+        order,
+        (t) => ({ ...t, endDate, laneId: laneId || t.laneId }),
+        () => ({
+          id: generateUUID(),
+          order,
+          type: 'task' as const,
+          laneId: laneId || '',
+          name: '',
+          startDate: '',
+          endDate,
+        })
+      )
+    }));
+  },
+  
+  // 指定されたorderのデータを削除
+  deleteRowData: (order: number) => {
+    set((state) => ({
+      lanes: state.lanes.filter((l) => l.order !== order),
+      tasks: state.tasks.filter((t) => t.order !== order),
+    }));
+  },
+  
+  updateLaneTaskOrder: (oldOrder: number, newOrder: number) => {
+    set((state) => ({
+      lanes: updateItemByOrder(state.lanes, oldOrder, { order: newOrder }),
+      tasks: updateItemByOrder(state.tasks, oldOrder, { order: newOrder }),
     }));
   },
   
@@ -200,4 +301,7 @@ export const useScheduleStore = create<ScheduleStore>((set) => ({
   clearAll: () => {
     set({ milestones: [], lanes: [], tasks: [] });
   },
-}));
+}),
+    { name: 'ScheduleStore' }
+  )
+);
