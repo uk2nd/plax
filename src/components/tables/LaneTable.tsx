@@ -52,17 +52,24 @@ export const LaneTable = () => {
 
   // 行を削除する関数
   const deleteRow = (rowId: string) => {
+    let orderToDelete: number | undefined;
+    
     setData((old) => {
       const rowIndex = parseInt(rowId);
       const rowToDelete = old[rowIndex];
       
-      // Storeから該当のデータを削除
+      // 削除するorderを記録
       if (rowToDelete && rowToDelete.order !== undefined) {
-        useScheduleStore.getState().deleteRowData(rowToDelete.order);
+        orderToDelete = rowToDelete.order;
       }
       
       return deleteRowUtil(old, rowId);
     });
+    
+    // Storeから該当のデータを削除（setData完了後に実行）
+    if (orderToDelete !== undefined) {
+      useScheduleStore.getState().deleteRowData(orderToDelete);
+    }
   };
 
   // 行を移動する関数（order値を更新）
