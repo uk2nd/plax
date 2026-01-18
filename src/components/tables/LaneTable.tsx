@@ -67,24 +67,27 @@ export const LaneTable = () => {
 
   // 行を移動する関数（order値を更新）
   const moveRow = (fromIndex: number, toIndex: number) => {
+    let oldOrder: number;
+    let newOrder: number;
+    
     setData((old) => {
       const result = moveRowUtil(old, fromIndex, toIndex);
       const movedRow = result[toIndex];
-      const oldOrder = movedRow.order;
+      oldOrder = movedRow.order;
       
       // 移動先の上下の行のorderの中間値を計算
       const prevOrder = result[toIndex - 1]?.order ?? (result[toIndex + 1]?.order ?? 1) - 2;
       const nextOrder = result[toIndex + 1]?.order ?? (result[toIndex - 1]?.order ?? 0) + 2;
-      const newOrder = (prevOrder + nextOrder) / 2;
+      newOrder = (prevOrder + nextOrder) / 2;
       
       // 移動した行のorderを更新
       result[toIndex] = { ...movedRow, order: newOrder };
       
-      // Storeのorder値を更新
-      updateLaneTaskOrder(oldOrder, newOrder);
-      
       return result;
     });
+    
+    // Storeのorder値を更新（setData完了後に実行）
+    updateLaneTaskOrder(oldOrder!, newOrder!);
   };
 
   // 並び替え・ドラッグ&ドロップのロジック
