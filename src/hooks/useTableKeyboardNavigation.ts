@@ -1,9 +1,171 @@
 import { KeyboardEvent } from "react";
 
+type Direction = 'up' | 'down' | 'left' | 'right';
+
 /**
  * テーブルセルのキーボードナビゲーションを提供するカスタムフック
  */
 export const useTableKeyboardNavigation = () => {
+  /**
+   * セル選択モード用のキーボードハンドラ
+   * Excelライクな選択モードの動作を実装
+   */
+  const handleSelectModeKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    rowId: string,
+    colIndex: number,
+    totalCols: number,
+    onEnterEditMode: (clearContent: boolean, initialKey?: string) => void,
+    onMove: (direction: Direction) => void,
+    addRowBelow?: (rowId: string) => void,
+    deleteRow?: (rowId: string) => void
+  ) => {
+    // IME変換中は編集モードへの自動遷移を抑制
+    const isComposing = e.currentTarget.dataset.isComposing === 'true';
+    if (isComposing) {
+      return;
+    }
+    // Ctrl + Shift + K: 行を削除
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') {
+      e.preventDefault();
+      if (deleteRow) {
+        deleteRow(rowId);
+        // 削除後、次の行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          onMove('down');
+        }, 50);
+      }
+      return;
+    }
+
+    // Ctrl + Enter: 行を追加
+    if (e.ctrlKey && !e.shiftKey && e.code === 'Enter') {
+      e.preventDefault();
+      if (addRowBelow) {
+        addRowBelow(rowId);
+        // 新しい行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          onMove('down');
+        }, 50);
+      }
+      return;
+    }
+
+    // F2キー: 編集モードに入る（内容保持）
+    if (e.key === 'F2') {
+      e.preventDefault();
+      onEnterEditMode(false);
+      return;
+    }
+
+    // 文字・数字入力: 編集モードに入る（入力された文字で値を置き換え）
+    if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      // 選択モードで文字入力があった場合、その文字で値を置き換えて編集モードへ
+      e.preventDefault();
+      onEnterEditMode(false, e.key);
+      return;
+    }
+
+    // ナビゲーション - 右方向
+    if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+      e.preventDefault();
+      onMove('right');
+      return;
+    }
+
+    // ナビゲーション - 左方向
+    if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+      e.preventDefault();
+      onMove('left');
+      return;
+    }
+
+    // ナビゲーション - 下方向
+    if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
+      e.preventDefault();
+      onMove('down');
+      return;
+    }
+
+    // ナビゲーション - 上方向
+    if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) {
+      e.preventDefault();
+      onMove('up');
+      return;
+    }
+  };
+
+  /**
+   * セル編集モード用のキーボードハンドラ
+   * Excelライクな編集モードの動作を実装
+   */
+  const handleEditModeKeyDown = (
+    e: KeyboardEvent<HTMLInputElement>,
+    onConfirm: (direction: Direction) => void,
+    rowId?: string,
+    addRowBelow?: (rowId: string) => void,
+    deleteRow?: (rowId: string) => void
+  ) => {
+    const input = e.currentTarget;
+
+    // Ctrl + Shift + K: 行を削除
+    if (e.ctrlKey && e.shiftKey && e.code === 'KeyK') {
+      e.preventDefault();
+      if (deleteRow && rowId) {
+        deleteRow(rowId);
+        // 削除後、次の行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          onConfirm('down');
+        }, 50);
+      }
+      return;
+    }
+
+    // Ctrl + Enter: 行を追加
+    if (e.ctrlKey && !e.shiftKey && e.code === 'Enter') {
+      e.preventDefault();
+      if (addRowBelow && rowId) {
+        addRowBelow(rowId);
+        // 新しい行の同じ列にフォーカスを移動
+        setTimeout(() => {
+          onConfirm('down');
+        }, 50);
+      }
+      return;
+    }
+
+    // Tab: 入力確定して左右に移動
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      onConfirm(e.shiftKey ? 'left' : 'right');
+      return;
+    }
+
+    // Enter: 入力確定して上下に移動
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onConfirm(e.shiftKey ? 'up' : 'down');
+      return;
+    }
+
+    // ArrowUp: カーソルを先頭に移動
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      input.setSelectionRange(0, 0);
+      return;
+    }
+
+    // ArrowDown: カーソルを末尾に移動
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+      return;
+    }
+
+    // ArrowLeft/Right: デフォルトの動作（カーソル移動）を許可
+  };
+
   /**
    * シンプルなグリッド用のキーボードナビゲーションハンドラー
    * （行番号ベースのテーブル用）
@@ -266,5 +428,7 @@ export const useTableKeyboardNavigation = () => {
   return {
     handleSimpleGridKeyDown,
     handleComplexGridKeyDown,
+    handleSelectModeKeyDown,
+    handleEditModeKeyDown,
   };
 };

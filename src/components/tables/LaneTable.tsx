@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-table";
 import { useTableKeyboardNavigation } from "@/src/hooks/useTableKeyboardNavigation";
 import { useTableReordering } from "@/src/hooks/useTableReordering";
+import { useCellMode } from "@/src/hooks/useCellMode";
 import {
   addRowBelow as addRowBelowUtil,
   deleteRow as deleteRowUtil,
@@ -34,7 +35,8 @@ const initialData: TaskRowWithOrder[] = [createEmptyRow(0)];
 
 export const LaneTable = () => {
   const [data, setData] = useState<TaskRowWithOrder[]>(initialData);
-  const { handleComplexGridKeyDown } = useTableKeyboardNavigation();
+  const { handleComplexGridKeyDown, handleSelectModeKeyDown, handleEditModeKeyDown } = useTableKeyboardNavigation();
+  const { focusedCell, cellMode, isCellFocused, focusCell, setMode } = useCellMode();
   const updateLaneTaskOrder = useScheduleStore((state) => state.updateLaneTaskOrder);
 
   // 行を追加する関数
@@ -161,10 +163,17 @@ export const LaneTable = () => {
     () => createLaneColumns({
       updateData,
       handleComplexGridKeyDown,
+      handleSelectModeKeyDown,
+      handleEditModeKeyDown,
       addRowBelow,
       deleteRow,
+      focusedCell,
+      cellMode,
+      isCellFocused,
+      focusCell,
+      setMode,
     }),
-    []
+    [focusedCell, cellMode, handleSelectModeKeyDown, handleEditModeKeyDown, isCellFocused, focusCell, setMode]
   );
 
   const table = useReactTable({

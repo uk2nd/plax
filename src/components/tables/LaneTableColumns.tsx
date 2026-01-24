@@ -2,6 +2,9 @@ import { createColumnHelper, ColumnDef } from "@tanstack/react-table";
 import { formatDateInput } from "@/src/utils/dateFormat";
 import { useScheduleStore } from "@/src/stores/scheduleStore";
 import { calculateLaneId } from "@/src/utils/laneCalculation";
+import { TableInputCell } from "./TableInputCell";
+import { FocusedCell } from "@/src/hooks/useCellMode";
+import { KeyboardEvent } from "react";
 
 export type TaskRow = {
   lane: string;
@@ -22,17 +25,92 @@ type LaneColumnOptions = {
     addRowBelow?: (rowId: string) => void,
     deleteRow?: (rowId: string) => void
   ) => void;
+  handleSelectModeKeyDown: (
+    e: KeyboardEvent<HTMLInputElement>,
+    rowId: string,
+    colIndex: number,
+    totalCols: number,
+    onEnterEditMode: (clearContent: boolean, initialKey?: string) => void,
+    onMove: (direction: 'up' | 'down' | 'left' | 'right') => void,
+    addRowBelow?: (rowId: string) => void,
+    deleteRow?: (rowId: string) => void
+  ) => void;
+  handleEditModeKeyDown: (
+    e: KeyboardEvent<HTMLInputElement>,
+    onConfirm: (direction: 'up' | 'down' | 'left' | 'right') => void,
+    rowId?: string,
+    addRowBelow?: (rowId: string) => void,
+    deleteRow?: (rowId: string) => void
+  ) => void;
   addRowBelow: (rowId: string) => void;
   deleteRow: (rowId: string) => void;
+  focusedCell: FocusedCell | null;
+  cellMode: 'select' | 'edit';
+  isCellFocused: (rowId: string, colIndex: number) => boolean;
+  focusCell: (rowId: string, colIndex: number, mode?: 'select' | 'edit') => void;
+  setMode: (mode: 'select' | 'edit') => void;
 };
 
 export const createLaneColumns = ({
   updateData,
   handleComplexGridKeyDown,
+  handleSelectModeKeyDown,
+  handleEditModeKeyDown,
   addRowBelow,
   deleteRow,
+  focusedCell,
+  cellMode,
+  isCellFocused,
+  focusCell,
+  setMode,
 }: LaneColumnOptions): ColumnDef<TaskRow, any>[] => {
   const columnHelper = createColumnHelper<TaskRow>();
+
+  // セル移動処理のヘルパー関数
+  const moveToCell = (currentRowId: string, currentCol: number, direction: 'up' | 'down' | 'left' | 'right') => {
+    const allInputs = Array.from(
+      document.querySelectorAll("input[data-row-id][data-col], div[data-row-id][data-col]")
+    ) as (HTMLInputElement | HTMLDivElement)[];
+
+    const currentIndex = allInputs.findIndex(
+      (el) => el.dataset.rowId === currentRowId && el.dataset.col === String(currentCol)
+    );
+
+    if (currentIndex === -1) return;
+
+    let targetIndex = -1;
+
+    if (direction === 'up' || direction === 'down') {
+      // 同じ列で上下に移動
+      const step = direction === 'down' ? 1 : -1;
+      for (let i = currentIndex + step; i >= 0 && i < allInputs.length; i += step) {
+        const el = allInputs[i];
+        if (el.dataset.col === String(currentCol) && !(el as HTMLInputElement).disabled) {
+          targetIndex = i;
+          break;
+        }
+      }
+    } else {
+      // 同じ行で左右に移動
+      const currentRowId = allInputs[currentIndex].dataset.rowId;
+      const targetCol = direction === 'right' ? currentCol + 1 : currentCol - 1;
+      
+      for (let i = 0; i < allInputs.length; i++) {
+        const el = allInputs[i];
+        if (el.dataset.rowId === currentRowId && el.dataset.col === String(targetCol) && !(el as HTMLInputElement).disabled) {
+          targetIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (targetIndex !== -1) {
+      const targetEl = allInputs[targetIndex];
+      const targetRowId = targetEl.dataset.rowId!;
+      const targetCol = parseInt(targetEl.dataset.col!);
+      focusCell(targetRowId, targetCol, 'select');
+    }
+  };
 
   return [
     columnHelper.accessor("lane", {
@@ -41,9 +119,11 @@ export const createLaneColumns = ({
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const updateLaneName = useScheduleStore((state) => state.updateLaneName);
         const laneValue = getValue();
+        const rowId = row.id;
+        const colIndex = 0;
+        const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          // フォーカス時に現在の値を保存
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
@@ -52,46 +132,54 @@ export const createLaneColumns = ({
           const rowData = row.original;
           const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          console.log('[Lane] Initial:', initialValue, 'Current:', rowData.lane, 'Changed:', rowData.lane !== initialValue);
-          
-          // 値が変更された場合のみStoreに送信
           if (rowData.lane !== initialValue) {
             const order = rowData.order ?? rowIndex;
             const isLane = laneValue.trim() !== '' && laneValue.trim() !== '┋';
             
             if (isLane) {
-              console.log('[Lane] Sending to Store - Order:', order, 'Lane Name:', rowData.lane);
               updateLaneName(order, rowData.lane);
             }
           }
         };
-        
+
+        const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
+          if (initialKey !== undefined) {
+            // 文字入力の場合：値を入力された文字で置き換え
+            updateData(rowId, "lane", initialKey);
+          }
+          // initialKeyがない場合（F2キー）：値はそのまま
+          setMode('edit');
+        };
+
+        const handleCellClick = () => {
+          focusCell(rowId, colIndex, 'select');
+        };
+
+        const handleCellDoubleClick = () => {
+          focusCell(rowId, colIndex, 'edit');
+        };
+
         return (
-          <input
-            type="text"
+          <TableInputCell
             value={laneValue}
-            onChange={(e) => updateData(row.id, "lane", e.target.value)}
+            rowId={rowId}
+            colIndex={colIndex}
+            isFocused={isFocused}
+            mode={cellMode}
+            onChange={(value) => updateData(rowId, "lane", value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={(e) => {
-              handleComplexGridKeyDown(e, row.id, 0, 5, addRowBelow, deleteRow);
-              // 右矢印で次の列が非活性なら並び替えボタンに移動
-              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                const currentCell = e.currentTarget.closest('td');
-                const currentRow = currentCell?.closest('tr');
-                const nextInput = currentRow?.querySelector('input[data-col="1"]') as HTMLInputElement;
-                if (nextInput && nextInput.disabled) {
-                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                  if (button) {
-                    e.preventDefault();
-                    button.focus();
-                  }
-                }
-              }
-            }}
-            data-row-id={row.id}
-            data-col={0}
-            className="w-full border-none outline-none bg-transparent px-0 focus:ring-0"
+            onSelectModeKeyDown={(e) => 
+              handleSelectModeKeyDown(e, rowId, colIndex, 5, handleEnterEditMode, (dir) => moveToCell(rowId, colIndex, dir), addRowBelow, deleteRow)
+            }
+            onEditModeKeyDown={(e) => 
+              handleEditModeKeyDown(e, (dir) => {
+                setMode('select');
+                moveToCell(rowId, colIndex, dir);
+              }, rowId, addRowBelow, deleteRow)
+            }
+            onCellClick={handleCellClick}
+            onCellDoubleClick={handleCellDoubleClick}
           />
         );
       },
@@ -106,9 +194,11 @@ export const createLaneColumns = ({
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        const rowId = info.row.id;
+        const colIndex = 1;
+        const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          // フォーカス時に現在の値を保存
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
@@ -117,45 +207,57 @@ export const createLaneColumns = ({
           const rowData = info.row.original;
           const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          console.log('[Task] Initial:', initialValue, 'Current:', rowData.task, 'Changed:', rowData.task !== initialValue);
-          
-          // 値が変更された場合のみStoreに送信
           if (rowData.task !== initialValue) {
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            
-            console.log('[Task] Sending to Store - Order:', order, 'Task Name:', rowData.task, 'LaneId:', laneId);
             updateTaskName(order, rowData.task, laneId);
           }
         };
-        
+
+        const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
+          if (initialKey !== undefined) {
+            // 文字入力の場合：値を入力された文字で置き換え
+            updateData(rowId, "task", initialKey);
+          }
+          // initialKeyがない場合（F2キー）：値はそのまま
+          setMode('edit');
+        };
+
+        const handleCellClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'select');
+          }
+        };
+
+        const handleCellDoubleClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'edit');
+          }
+        };
+
         return (
-          <input
-            type="text"
+          <TableInputCell
             value={info.getValue()}
-            onChange={(e) => updateData(info.row.id, "task", e.target.value)}
+            rowId={rowId}
+            colIndex={colIndex}
+            isFocused={isFocused}
+            mode={cellMode}
+            disabled={isDisabled}
+            className="text-blue-600 font-semibold"
+            onChange={(value) => updateData(rowId, "task", value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={(e) => {
-              handleComplexGridKeyDown(e, info.row.id, 1, 5, addRowBelow, deleteRow);
-              // 右矢印で次の列が非活性なら並び替えボタンに移動
-              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                const currentCell = e.currentTarget.closest('td');
-                const currentRow = currentCell?.closest('tr');
-                const nextInput = currentRow?.querySelector('input[data-col="2"]') as HTMLInputElement;
-                if (nextInput && nextInput.disabled) {
-                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                  if (button) {
-                    e.preventDefault();
-                    button.focus();
-                  }
-                }
-              }
-            }}
-            data-row-id={info.row.id}
-            data-col={1}
-            disabled={isDisabled}
-            className={`w-full border-none outline-none px-0 focus:ring-0 text-blue-600 font-semibold ${isDisabled ? 'bg-gray-200 cursor-not-allowed' : 'bg-transparent'}`}
+            onSelectModeKeyDown={(e) => 
+              handleSelectModeKeyDown(e, rowId, colIndex, 5, handleEnterEditMode, (dir) => moveToCell(rowId, colIndex, dir), addRowBelow, deleteRow)
+            }
+            onEditModeKeyDown={(e) => 
+              handleEditModeKeyDown(e, (dir) => {
+                setMode('select');
+                moveToCell(rowId, colIndex, dir);
+              }, rowId, addRowBelow, deleteRow)
+            }
+            onCellClick={handleCellClick}
+            onCellDoubleClick={handleCellDoubleClick}
           />
         );
       },
@@ -170,9 +272,11 @@ export const createLaneColumns = ({
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        const rowId = info.row.id;
+        const colIndex = 2;
+        const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          // フォーカス時に現在の値を保存
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
@@ -187,45 +291,62 @@ export const createLaneColumns = ({
           const currentValue = formatted || rowData.startDate;
           const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          console.log('[StartDate] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
-          
-          // 値が変更された場合のみStoreに送信
           if (currentValue !== initialValue) {
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            
-            console.log('[StartDate] Sending to Store - Order:', order, 'StartDate:', currentValue, 'LaneId:', laneId);
             updateTaskStartDate(order, currentValue, laneId);
           }
         };
-        
+
+        const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
+          if (initialKey !== undefined) {
+            // 文字入力の場合：値を入力された文字で置き換え
+            updateData(rowId, "startDate", initialKey);
+          }
+          // initialKeyがない場合（F2キー）：値はそのまま
+          setMode('edit');
+        };
+
+        const handleCellClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'select');
+          }
+        };
+
+        const handleCellDoubleClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'edit');
+          }
+        };
+
         return (
-          <input
-            type="text"
+          <TableInputCell
             value={info.getValue()}
-            onChange={(e) => updateData(info.row.id, "startDate", e.target.value)}
+            rowId={rowId}
+            colIndex={colIndex}
+            isFocused={isFocused}
+            mode={cellMode}
+            disabled={isDisabled}
+            onChange={(value) => updateData(rowId, "startDate", value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={(e) => {
-              handleComplexGridKeyDown(e, info.row.id, 2, 5, addRowBelow, deleteRow);
-              // 右矢印で次の列が非活性なら並び替えボタンに移動
-              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                const currentCell = e.currentTarget.closest('td');
-                const currentRow = currentCell?.closest('tr');
-                const nextInput = currentRow?.querySelector('input[data-col="3"]') as HTMLInputElement;
-                if (nextInput && nextInput.disabled) {
-                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                  if (button) {
-                    e.preventDefault();
-                    button.focus();
-                  }
+            onSelectModeKeyDown={(e) => 
+              handleSelectModeKeyDown(e, rowId, colIndex, 5, handleEnterEditMode, (dir) => moveToCell(rowId, colIndex, dir), addRowBelow, deleteRow)
+            }
+            onEditModeKeyDown={(e) => 
+              handleEditModeKeyDown(e, (dir) => {
+                // Enter/Shift+Enter/Tab/Shift+Tabで日付を自動補完
+                const currentValue = e.currentTarget.value;
+                const formatted = formatDateInput(currentValue);
+                if (formatted !== currentValue) {
+                  updateData(rowId, "startDate", formatted);
                 }
-              }
-            }}
-            data-row-id={info.row.id}
-            data-col={2}
-            disabled={isDisabled}
-            className={`w-full border-none outline-none px-0 focus:ring-0 ${isDisabled ? 'bg-gray-200 cursor-not-allowed' : 'bg-transparent'}`}
+                setMode('select');
+                moveToCell(rowId, colIndex, dir);
+              }, rowId, addRowBelow, deleteRow)
+            }
+            onCellClick={handleCellClick}
+            onCellDoubleClick={handleCellDoubleClick}
           />
         );
       },
@@ -241,32 +362,53 @@ export const createLaneColumns = ({
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        const rowId = info.row.id;
+        const colIndex = 3;
+        const isFocused = isCellFocused(rowId, colIndex);
+
+        const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
+          if (initialKey !== undefined) {
+            // 文字入力の場合：値を入力された文字で置き換え
+            updateData(rowId, "duration", initialKey);
+          }
+          // initialKeyがない場合（F2キー）：値はそのまま
+          setMode('edit');
+        };
+
+        const handleCellClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'select');
+          }
+        };
+
+        const handleCellDoubleClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'edit');
+          }
+        };
         
         return (
-          <input
-            type="text"
+          <TableInputCell
             value={info.getValue()}
-            onChange={(e) => updateData(info.row.id, "duration", e.target.value)}
-            onKeyDown={(e) => {
-              handleComplexGridKeyDown(e, info.row.id, 3, 5, addRowBelow, deleteRow);
-              // 右矢印で次の列が非活性なら並び替えボタンに移動
-              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                const currentCell = e.currentTarget.closest('td');
-                const currentRow = currentCell?.closest('tr');
-                const nextInput = currentRow?.querySelector('input[data-col="4"]') as HTMLInputElement;
-                if (nextInput && nextInput.disabled) {
-                  const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                  if (button) {
-                    e.preventDefault();
-                    button.focus();
-                  }
-                }
-              }
-            }}
-            data-row-id={info.row.id}
-            data-col={3}
+            rowId={rowId}
+            colIndex={colIndex}
+            isFocused={isFocused}
+            mode={cellMode}
             disabled={isDisabled}
-            className={`w-full border-none outline-none px-0 focus:ring-0 ${isDisabled ? 'bg-gray-200 cursor-not-allowed' : 'bg-transparent'}`}
+            onChange={(value) => updateData(rowId, "duration", value)}
+            onFocus={() => {}}
+            onBlur={() => {}}
+            onSelectModeKeyDown={(e) => 
+              handleSelectModeKeyDown(e, rowId, colIndex, 5, handleEnterEditMode, (dir) => moveToCell(rowId, colIndex, dir), addRowBelow, deleteRow)
+            }
+            onEditModeKeyDown={(e) => 
+              handleEditModeKeyDown(e, (dir) => {
+                setMode('select');
+                moveToCell(rowId, colIndex, dir);
+              }, rowId, addRowBelow, deleteRow)
+            }
+            onCellClick={handleCellClick}
+            onCellDoubleClick={handleCellDoubleClick}
           />
         );
       },
@@ -281,9 +423,11 @@ export const createLaneColumns = ({
         const laneValue = info.row.original.lane;
         const hasLaneText = laneValue.trim() !== '' && laneValue.trim() !== '┗';
         const isDisabled = hasLaneText;
+        const rowId = info.row.id;
+        const colIndex = 4;
+        const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          // フォーカス時に現在の値を保存
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
@@ -298,42 +442,62 @@ export const createLaneColumns = ({
           const currentValue = formatted || rowData.endDate;
           const initialValue = e.currentTarget.dataset.initialValue || '';
           
-          console.log('[EndDate] Initial:', initialValue, 'Current:', currentValue, 'Changed:', currentValue !== initialValue);
-          
-          // 値が変更された場合のみStoreに送信
           if (currentValue !== initialValue) {
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            
-            console.log('[EndDate] Sending to Store - Order:', order, 'EndDate:', currentValue, 'LaneId:', laneId);
             updateTaskEndDate(order, currentValue, laneId);
           }
         };
-        
+
+        const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
+          if (initialKey !== undefined) {
+            // 文字入力の場合：値を入力された文字で置き換え
+            updateData(rowId, "endDate", initialKey);
+          }
+          // initialKeyがない場合（F2キー）：値はそのまま
+          setMode('edit');
+        };
+
+        const handleCellClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'select');
+          }
+        };
+
+        const handleCellDoubleClick = () => {
+          if (!isDisabled) {
+            focusCell(rowId, colIndex, 'edit');
+          }
+        };
+
         return (
-          <input
-            type="text"
+          <TableInputCell
             value={info.getValue()}
-            onChange={(e) => updateData(info.row.id, "endDate", e.target.value)}
+            rowId={rowId}
+            colIndex={colIndex}
+            isFocused={isFocused}
+            mode={cellMode}
+            disabled={isDisabled}
+            onChange={(value) => updateData(rowId, "endDate", value)}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            onKeyDown={(e) => {
-              handleComplexGridKeyDown(e, info.row.id, 4, 5, addRowBelow, deleteRow);
-              // 右矢印で並び替えボタンに移動
-              if (e.key === "ArrowRight" && e.currentTarget.selectionStart === e.currentTarget.value.length) {
-                const currentCell = e.currentTarget.closest('td');
-                const currentRow = currentCell?.closest('tr');
-                const button = currentRow?.querySelector('button[data-reorder-row]') as HTMLButtonElement;
-                if (button) {
-                  e.preventDefault();
-                  button.focus();
+            onSelectModeKeyDown={(e) => 
+              handleSelectModeKeyDown(e, rowId, colIndex, 5, handleEnterEditMode, (dir) => moveToCell(rowId, colIndex, dir), addRowBelow, deleteRow)
+            }
+            onEditModeKeyDown={(e) => 
+              handleEditModeKeyDown(e, (dir) => {
+                // Enter/Shift+Enter/Tab/Shift+Tabで日付を自動補完
+                const currentValue = e.currentTarget.value;
+                const formatted = formatDateInput(currentValue);
+                if (formatted !== currentValue) {
+                  updateData(rowId, "endDate", formatted);
                 }
-              }
-            }}
-            data-row-id={info.row.id}
-            data-col={4}
-            disabled={isDisabled}
-            className={`w-full border-none outline-none px-0 focus:ring-0 ${isDisabled ? 'bg-gray-200 cursor-not-allowed' : 'bg-transparent'}`}
+                setMode('select');
+                moveToCell(rowId, colIndex, dir);
+              }, rowId, addRowBelow, deleteRow)
+            }
+            onCellClick={handleCellClick}
+            onCellDoubleClick={handleCellDoubleClick}
           />
         );
       },
