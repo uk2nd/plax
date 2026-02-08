@@ -41,6 +41,9 @@ export const TableInputCell = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const divRef = useRef<HTMLDivElement>(null);
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prevIsFocusedRef = useRef(false);  // 明示的にfalseで初期化
+  const initialValueRef = useRef('');
+  const hasSavedInitialValue = useRef(false);  // 初期値を保存したかのフラグ
   const [clickCount, setClickCount] = useState(0);
   const [isComposing, setIsComposing] = useState(false);
   const [composingValue, setComposingValue] = useState('');
@@ -59,6 +62,41 @@ export const TableInputCell = ({
       }
     }
   }, [isFocused, mode]);
+
+  // フォーカス状態の変化を監視
+  useEffect(() => {
+    const prevIsFocused = prevIsFocusedRef.current;
+    
+    // フォーカスが付いた時：フラグをリセット
+    if (!prevIsFocused && isFocused) {
+      hasSavedInitialValue.current = false;
+      initialValueRef.current = value;
+      console.log('[Focus detected]', { rowId, colIndex, initialValue: value });
+    }
+    
+    // フォーカスが外れた時：onBlurを呼び出す
+    if (prevIsFocused && !isFocused) {
+      console.log('[Blur detected]', { rowId, colIndex, current: value, initial: initialValueRef.current });
+      
+      const syntheticEvent = {
+        currentTarget: {
+          value: value,
+          dataset: {
+            initialValue: initialValueRef.current
+          }
+        } as any,
+        target: {
+          value: value
+        } as any,
+      } as React.FocusEvent<HTMLInputElement>;
+      
+      onBlur(syntheticEvent);
+      hasSavedInitialValue.current = false;  // フラグをリセット
+    }
+    
+    prevIsFocusedRef.current = isFocused;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFocused]);
 
   // クリックタイマーのクリーンアップ
   useEffect(() => {
@@ -166,6 +204,12 @@ export const TableInputCell = ({
       value={isComposing ? composingValue : value}
       onChange={handleChange}
       onFocus={(e) => {
+        // 最初のフォーカス時のみ初期値を保存
+        if (!hasSavedInitialValue.current) {
+          initialValueRef.current = e.currentTarget.value;
+          hasSavedInitialValue.current = true;
+          console.log('[onFocus - saved]', { rowId, colIndex, initialValue: e.currentTarget.value });
+        }
         onFocus(e);
         // カーソルを末尾に配置
         const len = e.currentTarget.value.length;

@@ -22,8 +22,11 @@ export const applyDateAutoCompletion = (
   }
 
   // タスク・開始日・期間・終了日に文字が入力された場合、レーンに「┗」を自動入力
+  // ただし、レーン列が完全に空の場合のみ（既に何か入力されている場合はスキップ）
   if (['task', 'startDate', 'duration', 'endDate'].includes(columnId) && value.trim() !== '') {
-    if (currentRow.lane.trim() === '') {
+    const currentLane = currentRow.lane.trim();
+    // レーン列が完全に空の場合のみ「┗」を補完（既存のレーン名や「┗」がある場合は何もしない）
+    if (currentLane === '') {
       currentRow.lane = '┗';
     }
   }

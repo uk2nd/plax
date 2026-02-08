@@ -54,49 +54,78 @@ export const LaneTable = () => {
 
   // 行を削除する関数
   const deleteRow = (rowId: string) => {
-    let orderToDelete: number | undefined;
+    // Storeから該当のデータを削除（setDataの前に実行）
+    const rowIndex = parseInt(rowId);
+    const rowToDelete = data[rowIndex];
+    
+    if (rowToDelete && rowToDelete.order !== undefined) {
+      useScheduleStore.getState().deleteRowData(rowToDelete.order);
+    }
     
     setData((old) => {
-      const rowIndex = parseInt(rowId);
-      const rowToDelete = old[rowIndex];
-      
-      // 削除するorderを記録
-      if (rowToDelete && rowToDelete.order !== undefined) {
-        orderToDelete = rowToDelete.order;
-      }
-      
       return deleteRowUtil(old, rowId);
     });
-    
-    // Storeから該当のデータを削除（setData完了後に実行）
-    if (orderToDelete !== undefined) {
-      useScheduleStore.getState().deleteRowData(orderToDelete);
-    }
   };
 
   // 行を移動する関数（order値を更新）
   const moveRow = (fromIndex: number, toIndex: number) => {
-    let oldOrder: number;
-    let newOrder: number;
+    // 現在のデータを取得してorder計算を事前に実行
+    const old = data;
+    const result = moveRowUtil(old, fromIndex, toIndex);
+    const movedRow = result[toIndex];
+    const oldOrder = movedRow.order;
     
-    setData((old) => {
-      const result = moveRowUtil(old, fromIndex, toIndex);
-      const movedRow = result[toIndex];
-      oldOrder = movedRow.order;
-      
-      // 移動先の上下の行のorderの中間値を計算
-      const prevOrder = result[toIndex - 1]?.order ?? (result[toIndex + 1]?.order ?? 1) - 2;
-      const nextOrder = result[toIndex + 1]?.order ?? (result[toIndex - 1]?.order ?? 0) + 2;
-      newOrder = (prevOrder + nextOrder) / 2;
-      
-      // 移動した行のorderを更新
-      result[toIndex] = { ...movedRow, order: newOrder };
-      
-      return result;
-    });
+    // 移動先の上下の行のorderの中間値を計算
+    const prevOrder = result[toIndex - 1]?.order ?? (result[toIndex + 1]?.order ?? 1) - 2;
+    const nextOrder = result[toIndex + 1]?.order ?? (result[toIndex - 1]?.order ?? 0) + 2;
+    const newOrder = (prevOrder + nextOrder) / 2;
     
-    // Storeのorder値を更新（setData完了後に実行）
-    updateLaneTaskOrder(oldOrder!, newOrder!);
+    // 移動した行のorderを更新
+    result[toIndex] = { ...movedRow, order: newOrder };
+    
+    // 更新後のデータをUIに反映
+    setData(result);
+    
+    // setData実行後、最新のUIデータを使ってStore更新を実行
+    const store = useScheduleStore.getState();
+    store.updateLaneTaskOrder(oldOrder, newOrder);
+    
+    // UI側の最新データ配列（result）からレーン行を抽出してローカルで保持
+    const uiLanes: { id: string; order: number; type: 'lane'; name: string }[] = [];
+    for (let i = 0; i < result.length; i++) {
+      const row = result[i];
+      const isLaneRow = row.lane.trim() !== '' && row.lane.trim() !== '┗';
+      if (isLaneRow) {
+        // UI上のレーン行から、Store内の既存レーンIDを取得（なければ新規生成）
+        const existingLane = store.lanes.find(l => l.order === row.order || l.name === row.lane);
+        uiLanes.push({
+          id: existingLane?.id || '',
+          order: row.order ?? i,
+          type: 'lane' as const,
+          name: row.lane,
+        });
+      }
+    }
+    
+    // 影響を受けるタスク行のlaneIdを、UI側のローカルレーン情報をもとに再計算して更新
+    const start = Math.min(fromIndex, toIndex);
+    const end = Math.max(fromIndex, toIndex);
+    
+    for (let i = start; i <= end && i < result.length; i++) {
+      const row = result[i];
+      const isTaskRow = row.lane.trim() === '' || row.lane.trim() === '┗';
+      
+      if (isTaskRow && (row.task.trim() !== '' || row.startDate.trim() !== '' || row.endDate.trim() !== '')) {
+        const order = row.order ?? i;
+        // UI側のローカルレーン情報でlaneIdを再計算
+        const laneId = calculateLaneId(order, uiLanes);
+        // laneIdが空の場合、既存のタスクから現在のlaneIdを取得して保持
+        const existingTask = store.tasks.find(t => t.order === order);
+        const finalLaneId = laneId !== '' ? laneId : (existingTask?.laneId || '');
+        // laneIdを常に更新（空の場合は既存値を保持）
+        store.updateTaskName(order, row.task, finalLaneId, row.startDate, row.endDate);
+      }
+    }
   };
 
   // 並び替え・ドラッグ&ドロップのロジック
@@ -128,6 +157,8 @@ export const LaneTable = () => {
         const store = useScheduleStore.getState();
         const lanes = store.lanes;
         const laneId = calculateLaneId(rowIndex, lanes);
+        
+        // タスク名のStore更新はonBlurでのみ行う
         
         // 開始日が自動算出された場合
         if (columnId !== 'startDate' && beforeRow.startDate !== afterRow.startDate) {

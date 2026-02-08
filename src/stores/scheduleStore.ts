@@ -89,7 +89,7 @@ type ScheduleStore = {
     laneId?: string
   ) => void;
   updateLaneName: (order: number, name: string) => void;
-  updateTaskName: (order: number, name: string, laneId?: string) => void;
+  updateTaskName: (order: number, name: string, laneId?: string, startDate?: string, endDate?: string) => void;
   updateTaskStartDate: (order: number, startDate: string, laneId?: string) => void;
   updateTaskEndDate: (order: number, endDate: string, laneId?: string) => void;
   deleteRowData: (order: number) => void;
@@ -225,9 +225,10 @@ export const useScheduleStore = create<ScheduleStore>()(
     }));
   },
   
-  updateTaskName: (order: number, name: string, laneId?: string) => {
-    set((state) => ({
-      tasks: updateOrCreate(
+  updateTaskName: (order: number, name: string, laneId?: string, startDate?: string, endDate?: string) => {
+    console.log('[Store] updateTaskName called - Order:', order, 'Name:', name, 'LaneId:', laneId);
+    set((state) => {
+      const updatedTasks = updateOrCreate(
         state.tasks,
         order,
         (t) => ({ ...t, name, laneId: laneId || t.laneId }),
@@ -237,11 +238,13 @@ export const useScheduleStore = create<ScheduleStore>()(
           type: 'task' as const,
           laneId: laneId || '',
           name,
-          startDate: '',
-          endDate: '',
+          startDate: startDate ?? '',
+          endDate: endDate ?? '',
         })
-      )
-    }));
+      );
+      console.log('[Store] Tasks after update:', updatedTasks);
+      return { tasks: updatedTasks };
+    });
   },
   
   updateTaskStartDate: (order: number, startDate: string, laneId?: string) => {

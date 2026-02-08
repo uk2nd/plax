@@ -124,22 +124,25 @@ export const createLaneColumns = ({
         const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+          // dataset.initialValueはTableInputCell内で設定されるので不要
         };
         
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          const rowIndex = parseInt(row.id);
-          const rowData = row.original;
-          const initialValue = e.currentTarget.dataset.initialValue || '';
-          
-          if (rowData.lane !== initialValue) {
+        const saveLaneName = (value: string, initialValue: string) => {
+          if (value !== initialValue) {
+            const rowIndex = parseInt(row.id);
+            const rowData = row.original;
             const order = rowData.order ?? rowIndex;
-            const isLane = laneValue.trim() !== '' && laneValue.trim() !== '┋';
-            
+            const isLane = value.trim() !== '' && value.trim() !== '┋';
             if (isLane) {
-              updateLaneName(order, rowData.lane);
+              console.log('[Store Update] Lane', { order, value });
+              updateLaneName(order, value);
             }
           }
+        };
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const currentValue = e.currentTarget.value;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
+          saveLaneName(currentValue, initialValue);
         };
 
         const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
@@ -174,6 +177,9 @@ export const createLaneColumns = ({
             }
             onEditModeKeyDown={(e) => 
               handleEditModeKeyDown(e, (dir) => {
+                const value = e.currentTarget.value;
+                const initialValue = e.currentTarget.dataset.initialValue || '';
+                saveLaneName(value, initialValue);
                 setMode('select');
                 moveToCell(rowId, colIndex, dir);
               }, rowId, addRowBelow, deleteRow)
@@ -199,18 +205,21 @@ export const createLaneColumns = ({
         const isFocused = isCellFocused(rowId, colIndex);
         
         const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-          e.currentTarget.dataset.initialValue = e.currentTarget.value;
+          // TableInputCell内部で初期値を管理しているため、ここでは何もしない
         };
         
         const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          const rowIndex = parseInt(info.row.id);
-          const rowData = info.row.original;
+          const currentValue = info.row.original.task;
           const initialValue = e.currentTarget.dataset.initialValue || '';
+          console.log('[Task Blur] Current:', currentValue, 'Initial:', initialValue, 'Changed:', currentValue !== initialValue);
           
-          if (rowData.task !== initialValue) {
+          if (currentValue !== initialValue) {
+            const rowIndex = parseInt(info.row.id);
+            const rowData = info.row.original;
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            updateTaskName(order, rowData.task, laneId);
+            console.log('[Task Save] Calling updateTaskName - Order:', order, 'Value:', currentValue, 'LaneId:', laneId);
+            updateTaskName(order, currentValue, laneId);
           }
         };
 
@@ -252,6 +261,17 @@ export const createLaneColumns = ({
             }
             onEditModeKeyDown={(e) => 
               handleEditModeKeyDown(e, (dir) => {
+                const currentValue = info.row.original.task;
+                const initialValue = e.currentTarget.dataset.initialValue || '';
+                
+                if (currentValue !== initialValue) {
+                  const rowIndex = parseInt(info.row.id);
+                  const rowData = info.row.original;
+                  const order = rowData.order ?? rowIndex;
+                  const laneId = calculateLaneId(rowIndex, lanes);
+                  updateTaskName(order, currentValue, laneId);
+                }
+                
                 setMode('select');
                 moveToCell(rowId, colIndex, dir);
               }, rowId, addRowBelow, deleteRow)
@@ -280,22 +300,23 @@ export const createLaneColumns = ({
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          const formatted = formatDateInput(e.target.value);
-          if (formatted !== e.target.value) {
+        const saveStartDate = (value: string, initialValue: string) => {
+          const formatted = formatDateInput(value);
+          if (formatted !== value) {
             updateData(info.row.id, "startDate", formatted);
           }
-          
-          const rowIndex = parseInt(info.row.id);
-          const rowData = info.row.original;
-          const currentValue = formatted || rowData.startDate;
-          const initialValue = e.currentTarget.dataset.initialValue || '';
-          
-          if (currentValue !== initialValue) {
+          if (formatted !== initialValue) {
+            const rowIndex = parseInt(info.row.id);
+            const rowData = info.row.original;
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            updateTaskStartDate(order, currentValue, laneId);
+            updateTaskStartDate(order, formatted, laneId);
           }
+        };
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const currentValue = e.currentTarget.value;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
+          saveStartDate(currentValue, initialValue);
         };
 
         const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
@@ -335,12 +356,9 @@ export const createLaneColumns = ({
             }
             onEditModeKeyDown={(e) => 
               handleEditModeKeyDown(e, (dir) => {
-                // Enter/Shift+Enter/Tab/Shift+Tabで日付を自動補完
-                const currentValue = e.currentTarget.value;
-                const formatted = formatDateInput(currentValue);
-                if (formatted !== currentValue) {
-                  updateData(rowId, "startDate", formatted);
-                }
+                const value = e.currentTarget.value;
+                const initialValue = e.currentTarget.dataset.initialValue || '';
+                saveStartDate(value, initialValue);
                 setMode('select');
                 moveToCell(rowId, colIndex, dir);
               }, rowId, addRowBelow, deleteRow)
@@ -431,22 +449,23 @@ export const createLaneColumns = ({
           e.currentTarget.dataset.initialValue = e.currentTarget.value;
         };
         
-        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-          const formatted = formatDateInput(e.target.value);
-          if (formatted !== e.target.value) {
+        const saveEndDate = (value: string, initialValue: string) => {
+          const formatted = formatDateInput(value);
+          if (formatted !== value) {
             updateData(info.row.id, "endDate", formatted);
           }
-          
-          const rowIndex = parseInt(info.row.id);
-          const rowData = info.row.original;
-          const currentValue = formatted || rowData.endDate;
-          const initialValue = e.currentTarget.dataset.initialValue || '';
-          
-          if (currentValue !== initialValue) {
+          if (formatted !== initialValue) {
+            const rowIndex = parseInt(info.row.id);
+            const rowData = info.row.original;
             const order = rowData.order ?? rowIndex;
             const laneId = calculateLaneId(rowIndex, lanes);
-            updateTaskEndDate(order, currentValue, laneId);
+            updateTaskEndDate(order, formatted, laneId);
           }
+        };
+        const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+          const currentValue = e.currentTarget.value;
+          const initialValue = e.currentTarget.dataset.initialValue || '';
+          saveEndDate(currentValue, initialValue);
         };
 
         const handleEnterEditMode = (clearContent: boolean, initialKey?: string) => {
@@ -486,12 +505,9 @@ export const createLaneColumns = ({
             }
             onEditModeKeyDown={(e) => 
               handleEditModeKeyDown(e, (dir) => {
-                // Enter/Shift+Enter/Tab/Shift+Tabで日付を自動補完
-                const currentValue = e.currentTarget.value;
-                const formatted = formatDateInput(currentValue);
-                if (formatted !== currentValue) {
-                  updateData(rowId, "endDate", formatted);
-                }
+                const value = e.currentTarget.value;
+                const initialValue = e.currentTarget.dataset.initialValue || '';
+                saveEndDate(value, initialValue);
                 setMode('select');
                 moveToCell(rowId, colIndex, dir);
               }, rowId, addRowBelow, deleteRow)
